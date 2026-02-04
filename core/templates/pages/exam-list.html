@@ -1,0 +1,208 @@
+{% extends 'layout-vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Lista de Examenes{% endblock %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card">
+            <div class="d-flex card-header justify-content-between align-items-center">
+                <div>
+                    <h4 class="card-title">Examenes Psicometricos</h4>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'exams:create' %}" class="btn btn-primary">
+                        <iconify-icon icon="solar:add-circle-broken" class="align-middle fs-18 me-1"></iconify-icon>
+                        Nuevo Examen
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card-body border-bottom">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Nivel de Grado</label>
+                        <select name="grade" class="form-select">
+                            <option value="">Todos</option>
+                            {% for grade in grade_levels %}
+                            <option value="{{ grade.id }}" {% if selected_grade == grade.id|stringformat:"s" %}selected{% endif %}>
+                                {{ grade.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Area/Materia</label>
+                        <select name="subject" class="form-select">
+                            <option value="">Todas</option>
+                            {% for subject in subject_areas %}
+                            <option value="{{ subject.id }}" {% if selected_subject == subject.id|stringformat:"s" %}selected{% endif %}>
+                                {{ subject.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Buscar</label>
+                        <input type="text" name="search" class="form-control" placeholder="Nombre del examen..." value="{{ search_query }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <iconify-icon icon="solar:magnifer-broken" class="align-middle"></iconify-icon>
+                            Filtrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0 table-hover table-centered">
+                        <thead class="bg-light-subtle">
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Nivel de Grado</th>
+                                <th>Area</th>
+                                <th>Items</th>
+                                <th>Estado</th>
+                                <th>Creado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exam in exams %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'exams:editor' exam.pk %}" class="text-dark fw-medium">
+                                        {{ exam.name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-info">{{ exam.grade_level.name }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary">{{ exam.subject_area.name }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark">{{ exam.items.count }} items</span>
+                                </td>
+                                <td>
+                                    {% if exam.is_active %}
+                                    <span class="badge bg-success-subtle text-success">Activo</span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger">Inactivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ exam.created_at|date:"d M Y" }}</td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a href="{% url 'exams:preview' exam.pk %}" class="btn btn-light btn-sm" title="Vista previa">
+                                            <iconify-icon icon="solar:eye-broken" class="align-middle fs-18"></iconify-icon>
+                                        </a>
+                                        <a href="{% url 'exams:editor' exam.pk %}" class="btn btn-soft-primary btn-sm" title="Editar">
+                                            <iconify-icon icon="solar:pen-2-broken" class="align-middle fs-18"></iconify-icon>
+                                        </a>
+                                        <button type="button" class="btn btn-soft-danger btn-sm btn-delete-exam"
+                                                data-exam-id="{{ exam.pk }}" data-exam-name="{{ exam.name }}" title="Eliminar">
+                                            <iconify-icon icon="solar:trash-bin-minimalistic-2-broken" class="align-middle fs-18"></iconify-icon>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <iconify-icon icon="solar:document-broken" class="fs-48 text-muted"></iconify-icon>
+                                    <p class="text-muted mt-2 mb-0">No hay examenes registrados</p>
+                                    <a href="{% url 'exams:create' %}" class="btn btn-primary btn-sm mt-3">
+                                        Crear primer examen
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% if page_obj.has_other_pages %}
+            <div class="card-footer border-top">
+                <nav aria-label="Paginacion">
+                    <ul class="pagination justify-content-end mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_grade %}&grade={{ selected_grade }}{% endif %}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                Anterior
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}{% if selected_grade %}&grade={{ selected_grade }}{% endif %}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                {{ num }}
+                            </a>
+                        </li>
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_grade %}&grade={{ selected_grade }}{% endif %}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                Siguiente
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Eliminar examen
+    document.querySelectorAll('.btn-delete-exam').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const examId = this.dataset.examId;
+            const examName = this.dataset.examName;
+
+            Swal.fire({
+                title: 'Eliminar examen?',
+                text: `Se eliminara "${examName}" y todos sus items.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef5f5f',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Si, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/exams/${examId}/delete/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        }
+                    });
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock extra_javascript %}

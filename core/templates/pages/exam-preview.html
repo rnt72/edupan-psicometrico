@@ -1,0 +1,143 @@
+{% extends 'layout-vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Vista Previa: {{ exam.name }}{% endblock %}
+
+{% block page_content %}
+
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-1">{{ exam.name }}</h4>
+                <p class="text-muted mb-0">
+                    <span class="badge bg-info-subtle text-info">{{ exam.grade_level.name }}</span>
+                    <span class="badge bg-primary-subtle text-primary ms-1">{{ exam.subject_area.name }}</span>
+                    <span class="badge bg-light text-dark ms-1">{{ exam.items.count }} items</span>
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'exams:editor' exam.pk %}" class="btn btn-primary">
+                    <iconify-icon icon="solar:pen-2-broken" class="align-middle me-1"></iconify-icon>
+                    Editar
+                </a>
+                <a href="{% url 'exams:list' %}" class="btn btn-outline-dark">
+                    <iconify-icon icon="solar:arrow-left-broken" class="align-middle me-1"></iconify-icon>
+                    Volver
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% for item in exam.items.all %}
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <span class="badge bg-primary me-2">{{ item.code }}</span>
+                {{ item.instruction }}
+            </h5>
+            <span class="badge {% if item.scoring_type == 'D' %}bg-info{% else %}bg-warning{% endif %}">
+                {% if item.scoring_type == 'D' %}Dicotomico{% else %}Politomico{% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if item.image %}
+        <div class="mb-3">
+            <img src="{{ item.image.url }}" class="img-fluid rounded" style="max-height: 200px;" alt="Imagen del item">
+        </div>
+        {% endif %}
+
+        <div class="row">
+            {% for subq in item.subquestions.all %}
+            <div class="col-md-{% if item.subquestions.count == 1 %}12{% elif item.subquestions.count == 2 %}6{% else %}4{% endif %} mb-3">
+                <div class="border rounded p-3 h-100">
+                    {% if subq.context_text %}
+                    <p class="text-muted small mb-2">{{ subq.context_text }}</p>
+                    {% endif %}
+
+                    {% if subq.image %}
+                    <div class="mb-2">
+                        <img src="{{ subq.image.url }}" class="img-fluid rounded" style="max-height: 100px;" alt="Imagen subpregunta">
+                    </div>
+                    {% endif %}
+
+                    {% for option in subq.options.all %}
+                    <div class="form-check mb-1">
+                        <input class="form-check-input" type="radio" name="subq_{{ subq.id }}" id="opt_{{ option.id }}" disabled>
+                        <label class="form-check-label {% if option.is_correct %}text-success fw-bold{% endif %}" for="opt_{{ option.id }}">
+                            {{ option.label }}. {{ option.text }}
+                            {% if option.is_correct %}
+                            <iconify-icon icon="solar:check-circle-bold" class="text-success"></iconify-icon>
+                            {% endif %}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <p class="text-muted">Sin subpreguntas definidas</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if item.correct_criteria or item.partial_criteria or item.incorrect_criteria %}
+        <hr>
+        <h6 class="text-muted">Criterios de Calificacion:</h6>
+        <div class="row">
+            {% if item.correct_criteria %}
+            <div class="col-md-4">
+                <div class="d-flex align-items-start">
+                    <iconify-icon icon="solar:check-circle-broken" class="text-success fs-20 me-2 mt-1"></iconify-icon>
+                    <div>
+                        <strong class="text-success">Correcta</strong>
+                        <p class="mb-0 small">{{ item.correct_criteria }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if item.partial_criteria and item.scoring_type == 'P' %}
+            <div class="col-md-4">
+                <div class="d-flex align-items-start">
+                    <iconify-icon icon="solar:minus-circle-broken" class="text-warning fs-20 me-2 mt-1"></iconify-icon>
+                    <div>
+                        <strong class="text-warning">Parcial</strong>
+                        <p class="mb-0 small">{{ item.partial_criteria }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if item.incorrect_criteria %}
+            <div class="col-md-4">
+                <div class="d-flex align-items-start">
+                    <iconify-icon icon="solar:close-circle-broken" class="text-danger fs-20 me-2 mt-1"></iconify-icon>
+                    <div>
+                        <strong class="text-danger">Incorrecta</strong>
+                        <p class="mb-0 small">{{ item.incorrect_criteria }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% empty %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <iconify-icon icon="solar:document-broken" class="fs-48 text-muted"></iconify-icon>
+        <h5 class="mt-3">Sin items</h5>
+        <p class="text-muted">Este examen no tiene items definidos.</p>
+        <a href="{% url 'exams:editor' exam.pk %}" class="btn btn-primary">
+            <iconify-icon icon="solar:add-circle-broken" class="align-middle me-1"></iconify-icon>
+            Agregar Items
+        </a>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock page_content %}

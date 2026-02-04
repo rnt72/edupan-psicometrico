@@ -1,0 +1,687 @@
+{% extends 'layout-vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Editor: {{ exam.name }}{% endblock %}
+
+{% block page_content %}
+
+<!-- Header del examen -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-1">{{ exam.name }}</h4>
+                <p class="text-muted mb-0">
+                    <span class="badge bg-info-subtle text-info">{{ exam.grade_level.name }}</span>
+                    <span class="badge bg-primary-subtle text-primary ms-1">{{ exam.subject_area.name }}</span>
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'exams:preview' exam.pk %}" class="btn btn-outline-secondary">
+                    <iconify-icon icon="solar:eye-broken" class="align-middle me-1"></iconify-icon>
+                    Vista Previa
+                </a>
+                <a href="{% url 'exams:list' %}" class="btn btn-outline-dark">
+                    <iconify-icon icon="solar:arrow-left-broken" class="align-middle me-1"></iconify-icon>
+                    Volver
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Sidebar: Lista de Items -->
+    <div class="col-lg-3">
+        <div class="card position-sticky" style="top: 100px;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Items</h5>
+                <button type="button" class="btn btn-primary btn-sm" id="btnNewItem">
+                    <iconify-icon icon="solar:add-circle-broken" class="align-middle"></iconify-icon>
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="itemsList">
+                    {% for item in items %}
+                    <a href="#" class="list-group-item list-group-item-action item-link {% if forloop.first %}active{% endif %}"
+                       data-item-id="{{ item.id }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ item.code }}</strong>
+                                <small class="d-block text-muted text-truncate" style="max-width: 150px;">
+                                    {{ item.instruction|truncatechars:30 }}
+                                </small>
+                            </div>
+                            <span class="badge bg-light text-dark">{{ item.subquestions.count }}</span>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="text-center py-4" id="noItemsMessage">
+                        <iconify-icon icon="solar:document-add-broken" class="fs-36 text-muted"></iconify-icon>
+                        <p class="text-muted mb-0 mt-2">Sin items</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editor Principal -->
+    <div class="col-lg-9">
+        <div class="card" id="itemEditorCard">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <span id="editorTitle">Selecciona o crea un item</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Formulario del Item -->
+                <form id="itemForm">
+                    <input type="hidden" id="itemId" value="">
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="itemCode" class="form-label">Codigo <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="itemCode" placeholder="Ej: EA01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="scoringType" class="form-label">Tipo de Scoring</label>
+                                <select class="form-select" id="scoringType">
+                                    <option value="D">Dicotomico (0=incorrecto, 1=correcto)</option>
+                                    <option value="P">Politomico (0=incorrecto, 1=parcial, 2=correcto)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="itemOrder" class="form-label">Orden</label>
+                                <input type="number" class="form-control" id="itemOrder" value="1" min="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="itemInstruction" class="form-label">Instruccion <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="itemInstruction" rows="2"
+                                  placeholder="Ej: Que se ve en el dibujo? Marca la palabra correcta." required></textarea>
+                    </div>
+
+                    <!-- Subpreguntas -->
+                    <div class="border rounded p-3 mb-3 bg-light-subtle">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">
+                                <iconify-icon icon="solar:list-check-broken" class="align-middle me-1"></iconify-icon>
+                                Subpreguntas
+                            </h6>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddSubquestion">
+                                <iconify-icon icon="solar:add-circle-broken" class="align-middle me-1"></iconify-icon>
+                                Agregar
+                            </button>
+                        </div>
+
+                        <div id="subquestionsContainer">
+                            <!-- Las subpreguntas se cargan dinamicamente -->
+                            <div class="text-center py-3 text-muted" id="noSubquestionsMessage">
+                                Agrega subpreguntas con opciones de respuesta
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Criterios de Calificacion -->
+                    <div class="accordion mb-3" id="scoringAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#scoringCriteria">
+                                    <iconify-icon icon="solar:clipboard-check-broken" class="align-middle me-2"></iconify-icon>
+                                    Criterios de Calificacion (Winsteps)
+                                </button>
+                            </h2>
+                            <div id="scoringCriteria" class="accordion-collapse collapse" data-bs-parent="#scoringAccordion">
+                                <div class="accordion-body">
+                                    <div class="mb-3">
+                                        <label for="correctCriteria" class="form-label text-success">
+                                            <iconify-icon icon="solar:check-circle-broken" class="align-middle"></iconify-icon>
+                                            Correcta
+                                        </label>
+                                        <textarea class="form-control" id="correctCriteria" rows="2"
+                                                  placeholder="Ej: Marca las palabras mesa, bandera y pelota"></textarea>
+                                    </div>
+                                    <div class="mb-3" id="partialCriteriaGroup">
+                                        <label for="partialCriteria" class="form-label text-warning">
+                                            <iconify-icon icon="solar:minus-circle-broken" class="align-middle"></iconify-icon>
+                                            Parcialmente Correcta
+                                        </label>
+                                        <textarea class="form-control" id="partialCriteria" rows="2"
+                                                  placeholder="Ej: Marca 2 de 3 correctas"></textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label for="incorrectCriteria" class="form-label text-danger">
+                                            <iconify-icon icon="solar:close-circle-broken" class="align-middle"></iconify-icon>
+                                            Incorrecta
+                                        </label>
+                                        <textarea class="form-control" id="incorrectCriteria" rows="2"
+                                                  placeholder="Ej: Marca 1 o ninguna correcta"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de accion -->
+                    <div class="d-flex gap-2 justify-content-between">
+                        <button type="button" class="btn btn-outline-danger" id="btnDeleteItem" style="display: none;">
+                            <iconify-icon icon="solar:trash-bin-minimalistic-2-broken" class="align-middle me-1"></iconify-icon>
+                            Eliminar Item
+                        </button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary" id="btnCancelItem">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="btnSaveItem">
+                                <iconify-icon icon="solar:diskette-broken" class="align-middle me-1"></iconify-icon>
+                                Guardar Item
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template para Subpregunta -->
+<template id="subquestionTemplate">
+    <div class="card mb-2 subquestion-card" data-subquestion-id="">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-medium">Subpregunta <span class="subq-number">1</span></span>
+            <div class="d-flex gap-1">
+                <button type="button" class="btn btn-outline-secondary btn-sm btn-move-subq" title="Mover">
+                    <iconify-icon icon="solar:sort-vertical-broken"></iconify-icon>
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm btn-delete-subq" title="Eliminar">
+                    <iconify-icon icon="solar:trash-bin-minimalistic-2-broken"></iconify-icon>
+                </button>
+            </div>
+        </div>
+        <div class="card-body py-2">
+            <div class="mb-2">
+                <input type="text" class="form-control form-control-sm subq-context"
+                       placeholder="Texto de contexto (opcional)">
+            </div>
+            <div class="options-container">
+                <!-- Opciones se agregan aqui -->
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-add-option mt-2">
+                <iconify-icon icon="solar:add-circle-broken" class="align-middle me-1"></iconify-icon>
+                Agregar Opcion
+            </button>
+        </div>
+    </div>
+</template>
+
+<!-- Template para Opcion -->
+<template id="optionTemplate">
+    <div class="d-flex gap-2 align-items-center mb-2 option-row" data-option-id="">
+        <div class="form-check">
+            <input type="radio" class="form-check-input option-correct" name="correct_">
+        </div>
+        <input type="text" class="form-control form-control-sm option-label" style="width: 50px;" placeholder="a">
+        <input type="text" class="form-control form-control-sm option-text flex-grow-1" placeholder="Texto de la opcion">
+        <button type="button" class="btn btn-outline-danger btn-sm btn-delete-option">
+            <iconify-icon icon="solar:close-circle-broken"></iconify-icon>
+        </button>
+    </div>
+</template>
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script>
+const EXAM_ID = {{ exam.id }};
+const CSRF_TOKEN = '{{ csrf_token }}';
+
+// Datos iniciales de items
+let itemsData = {
+    {% for item in items %}
+    {{ item.id }}: {
+        id: {{ item.id }},
+        code: "{{ item.code }}",
+        instruction: "{{ item.instruction|escapejs }}",
+        order: {{ item.order }},
+        scoring_type: "{{ item.scoring_type }}",
+        correct_criteria: "{{ item.correct_criteria|escapejs }}",
+        partial_criteria: "{{ item.partial_criteria|escapejs }}",
+        incorrect_criteria: "{{ item.incorrect_criteria|escapejs }}",
+        subquestions: [
+            {% for subq in item.subquestions.all %}
+            {
+                id: {{ subq.id }},
+                order: {{ subq.order }},
+                context_text: "{{ subq.context_text|escapejs }}",
+                options: [
+                    {% for opt in subq.options.all %}
+                    {
+                        id: {{ opt.id }},
+                        label: "{{ opt.label }}",
+                        text: "{{ opt.text|escapejs }}",
+                        is_correct: {{ opt.is_correct|yesno:"true,false" }},
+                        order: {{ opt.order }}
+                    }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+};
+
+let currentItemId = null;
+let tempSubquestionId = 0;
+let tempOptionId = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Seleccionar primer item si existe
+    const firstItem = document.querySelector('.item-link');
+    if (firstItem) {
+        loadItem(parseInt(firstItem.dataset.itemId));
+    }
+
+    // Click en item de la lista
+    document.getElementById('itemsList').addEventListener('click', function(e) {
+        const itemLink = e.target.closest('.item-link');
+        if (itemLink) {
+            e.preventDefault();
+            document.querySelectorAll('.item-link').forEach(el => el.classList.remove('active'));
+            itemLink.classList.add('active');
+            loadItem(parseInt(itemLink.dataset.itemId));
+        }
+    });
+
+    // Nuevo item
+    document.getElementById('btnNewItem').addEventListener('click', function() {
+        clearForm();
+        currentItemId = null;
+        document.getElementById('editorTitle').textContent = 'Nuevo Item';
+        document.getElementById('btnDeleteItem').style.display = 'none';
+        document.querySelectorAll('.item-link').forEach(el => el.classList.remove('active'));
+    });
+
+    // Guardar item
+    document.getElementById('itemForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveItem();
+    });
+
+    // Cancelar
+    document.getElementById('btnCancelItem').addEventListener('click', function() {
+        if (currentItemId) {
+            loadItem(currentItemId);
+        } else {
+            clearForm();
+        }
+    });
+
+    // Eliminar item
+    document.getElementById('btnDeleteItem').addEventListener('click', function() {
+        if (currentItemId) {
+            Swal.fire({
+                title: 'Eliminar item?',
+                text: 'Se eliminaran todas las subpreguntas y opciones.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef5f5f',
+                confirmButtonText: 'Si, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    deleteItem(currentItemId);
+                }
+            });
+        }
+    });
+
+    // Agregar subpregunta
+    document.getElementById('btnAddSubquestion').addEventListener('click', function() {
+        addSubquestion();
+    });
+
+    // Mostrar/ocultar campo de criterio parcial segun tipo de scoring
+    document.getElementById('scoringType').addEventListener('change', function() {
+        const partialGroup = document.getElementById('partialCriteriaGroup');
+        partialGroup.style.display = this.value === 'P' ? 'block' : 'none';
+    });
+
+    // Delegacion de eventos para subpreguntas y opciones
+    document.getElementById('subquestionsContainer').addEventListener('click', function(e) {
+        // Eliminar subpregunta
+        if (e.target.closest('.btn-delete-subq')) {
+            const card = e.target.closest('.subquestion-card');
+            card.remove();
+            updateSubquestionNumbers();
+        }
+
+        // Agregar opcion
+        if (e.target.closest('.btn-add-option')) {
+            const card = e.target.closest('.subquestion-card');
+            addOption(card);
+        }
+
+        // Eliminar opcion
+        if (e.target.closest('.btn-delete-option')) {
+            const row = e.target.closest('.option-row');
+            row.remove();
+        }
+    });
+});
+
+function clearForm() {
+    document.getElementById('itemId').value = '';
+    document.getElementById('itemCode').value = '';
+    document.getElementById('itemInstruction').value = '';
+    document.getElementById('itemOrder').value = '1';
+    document.getElementById('scoringType').value = 'D';
+    document.getElementById('correctCriteria').value = '';
+    document.getElementById('partialCriteria').value = '';
+    document.getElementById('incorrectCriteria').value = '';
+    document.getElementById('subquestionsContainer').innerHTML =
+        '<div class="text-center py-3 text-muted" id="noSubquestionsMessage">Agrega subpreguntas con opciones de respuesta</div>';
+    document.getElementById('partialCriteriaGroup').style.display = 'none';
+}
+
+function loadItem(itemId) {
+    const item = itemsData[itemId];
+    if (!item) return;
+
+    currentItemId = itemId;
+    document.getElementById('itemId').value = item.id;
+    document.getElementById('itemCode').value = item.code;
+    document.getElementById('itemInstruction').value = item.instruction;
+    document.getElementById('itemOrder').value = item.order;
+    document.getElementById('scoringType').value = item.scoring_type;
+    document.getElementById('correctCriteria').value = item.correct_criteria;
+    document.getElementById('partialCriteria').value = item.partial_criteria;
+    document.getElementById('incorrectCriteria').value = item.incorrect_criteria;
+
+    document.getElementById('editorTitle').textContent = 'Editando: ' + item.code;
+    document.getElementById('btnDeleteItem').style.display = 'block';
+
+    // Mostrar/ocultar campo parcial
+    document.getElementById('partialCriteriaGroup').style.display =
+        item.scoring_type === 'P' ? 'block' : 'none';
+
+    // Cargar subpreguntas
+    const container = document.getElementById('subquestionsContainer');
+    container.innerHTML = '';
+
+    if (item.subquestions.length === 0) {
+        container.innerHTML = '<div class="text-center py-3 text-muted" id="noSubquestionsMessage">Agrega subpreguntas con opciones de respuesta</div>';
+    } else {
+        item.subquestions.forEach((subq, index) => {
+            const subqCard = createSubquestionCard(subq, index + 1);
+            container.appendChild(subqCard);
+        });
+    }
+}
+
+function createSubquestionCard(subqData, number) {
+    const template = document.getElementById('subquestionTemplate');
+    const card = template.content.cloneNode(true).querySelector('.subquestion-card');
+
+    card.dataset.subquestionId = subqData.id || 'new_' + (++tempSubquestionId);
+    card.querySelector('.subq-number').textContent = number;
+    card.querySelector('.subq-context').value = subqData.context_text || '';
+
+    const optionsContainer = card.querySelector('.options-container');
+    const radioName = 'correct_' + card.dataset.subquestionId;
+
+    if (subqData.options && subqData.options.length > 0) {
+        subqData.options.forEach(opt => {
+            const optionRow = createOptionRow(opt, radioName);
+            optionsContainer.appendChild(optionRow);
+        });
+    }
+
+    return card;
+}
+
+function createOptionRow(optData, radioName) {
+    const template = document.getElementById('optionTemplate');
+    const row = template.content.cloneNode(true).querySelector('.option-row');
+
+    row.dataset.optionId = optData.id || 'new_' + (++tempOptionId);
+    row.querySelector('.option-correct').name = radioName;
+    row.querySelector('.option-correct').checked = optData.is_correct || false;
+    row.querySelector('.option-label').value = optData.label || '';
+    row.querySelector('.option-text').value = optData.text || '';
+
+    return row;
+}
+
+function addSubquestion() {
+    const container = document.getElementById('subquestionsContainer');
+    const noMsg = document.getElementById('noSubquestionsMessage');
+    if (noMsg) noMsg.remove();
+
+    const number = container.querySelectorAll('.subquestion-card').length + 1;
+    const card = createSubquestionCard({ options: [] }, number);
+
+    // Agregar 3 opciones por defecto
+    const labels = ['a', 'b', 'c'];
+    const optionsContainer = card.querySelector('.options-container');
+    const radioName = 'correct_' + card.dataset.subquestionId;
+
+    labels.forEach(label => {
+        const optionRow = createOptionRow({ label: label }, radioName);
+        optionsContainer.appendChild(optionRow);
+    });
+
+    container.appendChild(card);
+}
+
+function addOption(subqCard) {
+    const optionsContainer = subqCard.querySelector('.options-container');
+    const existingOptions = optionsContainer.querySelectorAll('.option-row').length;
+    const labels = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const nextLabel = labels[Math.min(existingOptions, labels.length - 1)];
+
+    const radioName = subqCard.querySelector('.option-correct')?.name || 'correct_' + subqCard.dataset.subquestionId;
+    const optionRow = createOptionRow({ label: nextLabel }, radioName);
+    optionsContainer.appendChild(optionRow);
+}
+
+function updateSubquestionNumbers() {
+    document.querySelectorAll('.subquestion-card').forEach((card, index) => {
+        card.querySelector('.subq-number').textContent = index + 1;
+    });
+}
+
+function collectFormData() {
+    const subquestions = [];
+
+    document.querySelectorAll('.subquestion-card').forEach((card, subqIndex) => {
+        const options = [];
+
+        card.querySelectorAll('.option-row').forEach((row, optIndex) => {
+            options.push({
+                id: row.dataset.optionId.startsWith('new_') ? null : parseInt(row.dataset.optionId),
+                label: row.querySelector('.option-label').value,
+                text: row.querySelector('.option-text').value,
+                is_correct: row.querySelector('.option-correct').checked,
+                order: optIndex + 1
+            });
+        });
+
+        subquestions.push({
+            id: card.dataset.subquestionId.startsWith('new_') ? null : parseInt(card.dataset.subquestionId),
+            order: subqIndex + 1,
+            context_text: card.querySelector('.subq-context').value,
+            options: options
+        });
+    });
+
+    return {
+        exam_id: EXAM_ID,
+        code: document.getElementById('itemCode').value,
+        instruction: document.getElementById('itemInstruction').value,
+        order: parseInt(document.getElementById('itemOrder').value),
+        scoring_type: document.getElementById('scoringType').value,
+        correct_criteria: document.getElementById('correctCriteria').value,
+        partial_criteria: document.getElementById('partialCriteria').value,
+        incorrect_criteria: document.getElementById('incorrectCriteria').value,
+        subquestions: subquestions
+    };
+}
+
+async function saveItem() {
+    const data = collectFormData();
+
+    // Validaciones basicas
+    if (!data.code || !data.instruction) {
+        Swal.fire('Error', 'El codigo e instruccion son obligatorios.', 'error');
+        return;
+    }
+
+    try {
+        let response;
+        if (currentItemId) {
+            // Actualizar
+            response = await fetch(`/exams/api/items/${currentItemId}/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN
+                },
+                body: JSON.stringify(data)
+            });
+        } else {
+            // Crear
+            response = await fetch('/exams/api/items/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN
+                },
+                body: JSON.stringify(data)
+            });
+        }
+
+        const result = await response.json();
+        if (result.success) {
+            // Guardar subpreguntas y opciones
+            await saveSubquestionsAndOptions(result.item.id, data.subquestions);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Guardado',
+                text: 'Item guardado correctamente.',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                location.reload();
+            });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire('Error', 'Ocurrio un error al guardar.', 'error');
+    }
+}
+
+async function saveSubquestionsAndOptions(itemId, subquestions) {
+    for (const subq of subquestions) {
+        let subqId = subq.id;
+
+        if (!subqId) {
+            // Crear subpregunta
+            const subqResponse = await fetch('/exams/api/subquestions/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    order: subq.order,
+                    context_text: subq.context_text
+                })
+            });
+            const subqResult = await subqResponse.json();
+            subqId = subqResult.subquestion.id;
+        } else {
+            // Actualizar subpregunta
+            await fetch(`/exams/api/subquestions/${subqId}/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN
+                },
+                body: JSON.stringify({
+                    order: subq.order,
+                    context_text: subq.context_text
+                })
+            });
+        }
+
+        // Guardar opciones
+        for (const opt of subq.options) {
+            if (!opt.id) {
+                // Crear opcion
+                await fetch('/exams/api/options/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({
+                        subquestion_id: subqId,
+                        label: opt.label,
+                        text: opt.text,
+                        is_correct: opt.is_correct,
+                        order: opt.order
+                    })
+                });
+            } else {
+                // Actualizar opcion
+                await fetch(`/exams/api/options/${opt.id}/`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({
+                        label: opt.label,
+                        text: opt.text,
+                        is_correct: opt.is_correct,
+                        order: opt.order
+                    })
+                });
+            }
+        }
+    }
+}
+
+async function deleteItem(itemId) {
+    try {
+        const response = await fetch(`/exams/api/items/${itemId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN
+            }
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire('Error', 'Ocurrio un error al eliminar.', 'error');
+    }
+}
+</script>
+{% endblock extra_javascript %}

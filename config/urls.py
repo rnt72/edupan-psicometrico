@@ -14,6 +14,7 @@ urlpatterns = [
     path("users/", include("core.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
+    path("exams/", include("core.exams.urls", namespace="exams")),
     path("", include("core.pages.urls", namespace="pages")),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
