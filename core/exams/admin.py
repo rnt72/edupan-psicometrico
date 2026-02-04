@@ -1,25 +1,9 @@
 from django.contrib import admin
 
 from .models import Exam
-from .models import GradeLevel
 from .models import Item
 from .models import Option
-from .models import SubjectArea
 from .models import SubQuestion
-
-
-@admin.register(GradeLevel)
-class GradeLevelAdmin(admin.ModelAdmin):
-    list_display = ["name", "code", "order"]
-    search_fields = ["name", "code"]
-    ordering = ["order"]
-
-
-@admin.register(SubjectArea)
-class SubjectAreaAdmin(admin.ModelAdmin):
-    list_display = ["name", "code"]
-    search_fields = ["name", "code"]
-    ordering = ["name"]
 
 
 class ItemInline(admin.TabularInline):
@@ -31,15 +15,14 @@ class ItemInline(admin.TabularInline):
 
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
-    list_display = ["name", "grade_level", "subject_area", "is_active", "created_at"]
-    list_filter = ["grade_level", "subject_area", "is_active"]
-    search_fields = ["name", "description"]
+    list_display = ["name", "is_active", "created_at"]
+    list_filter = ["is_active"]
+    search_fields = ["name"]
     readonly_fields = ["created_at", "updated_at"]
     inlines = [ItemInline]
 
     fieldsets = (
-        (None, {"fields": ("name", "description")}),
-        ("Clasificación", {"fields": ("grade_level", "subject_area")}),
+        (None, {"fields": ("name",)}),
         ("Estado", {"fields": ("is_active", "created_by")}),
         ("Fechas", {"fields": ("created_at", "updated_at")}),
     )
@@ -69,7 +52,7 @@ class ItemAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {"fields": ("exam", "code", "order")}),
         ("Contenido", {"fields": ("instruction", "image")}),
-        ("Calificación", {"fields": ("scoring_type",)}),
+        ("Calificacion", {"fields": ("scoring_type",)}),
         (
             "Criterios Winsteps",
             {
@@ -79,7 +62,7 @@ class ItemAdmin(admin.ModelAdmin):
         ),
     )
 
-    @admin.display(description="Instrucción")
+    @admin.display(description="Instruccion")
     def instruction_short(self, obj):
         return obj.instruction[:60] + "..." if len(obj.instruction) > 60 else obj.instruction
 

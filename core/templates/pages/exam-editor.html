@@ -10,13 +10,7 @@
 <div class="row mb-3">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h4 class="mb-1">{{ exam.name }}</h4>
-                <p class="text-muted mb-0">
-                    <span class="badge bg-info-subtle text-info">{{ exam.grade_level.name }}</span>
-                    <span class="badge bg-primary-subtle text-primary ms-1">{{ exam.subject_area.name }}</span>
-                </p>
-            </div>
+            <h4 class="mb-0">{{ exam.name }}</h4>
             <div class="d-flex gap-2">
                 <a href="{% url 'exams:preview' exam.pk %}" class="btn btn-outline-secondary">
                     <iconify-icon icon="solar:eye-broken" class="align-middle me-1"></iconify-icon>
@@ -105,9 +99,9 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="itemInstruction" class="form-label">Instruccion <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="itemInstruction" rows="2"
-                                  placeholder="Ej: Que se ve en el dibujo? Marca la palabra correcta." required></textarea>
+                        <label class="form-label">Instruccion <span class="text-danger">*</span></label>
+                        <div id="instructionEditor" style="height: 150px;"></div>
+                        <input type="hidden" id="itemInstruction">
                     </div>
 
                     <!-- Subpreguntas -->
@@ -210,8 +204,8 @@
         </div>
         <div class="card-body py-2">
             <div class="mb-2">
-                <input type="text" class="form-control form-control-sm subq-context"
-                       placeholder="Texto de contexto (opcional)">
+                <label class="form-label small text-muted mb-1">Contenido de la subpregunta</label>
+                <div class="subq-context-editor" style="height: 120px; background: #fff;"></div>
             </div>
             <div class="options-container">
                 <!-- Opciones se agregan aqui -->
@@ -285,7 +279,30 @@ let currentItemId = null;
 let tempSubquestionId = 0;
 let tempOptionId = 0;
 
+// Inicializar Quill Editor para instrucciones
+let instructionQuill = null;
+
+// Almacenar editores Quill de subpreguntas
+let subquestionEditors = {};
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar editor Quill
+    instructionQuill = new Quill('#instructionEditor', {
+        theme: 'snow',
+        placeholder: 'Escribe la instruccion del item...',
+        modules: {
+            toolbar: [
+                [{ 'font': [] }, { 'size': [] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                [{ 'align': [] }],
+                ['link', 'image'],
+                ['clean']
+            ]
+        }
+    });
+
     // Seleccionar primer item si existe
     const firstItem = document.querySelector('.item-link');
     if (firstItem) {
@@ -362,6 +379,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Eliminar subpregunta
         if (e.target.closest('.btn-delete-subq')) {
             const card = e.target.closest('.subquestion-card');
+            const subqId = card.dataset.subquestionId;
+            // Eliminar referencia al editor
+            delete subquestionEditors[subqId];
             card.remove();
             updateSubquestionNumbers();
         }
@@ -383,12 +403,16 @@ document.addEventListener('DOMContentLoaded', function() {
 function clearForm() {
     document.getElementById('itemId').value = '';
     document.getElementById('itemCode').value = '';
-    document.getElementById('itemInstruction').value = '';
+    instructionQuill.root.innerHTML = '';
     document.getElementById('itemOrder').value = '1';
     document.getElementById('scoringType').value = 'D';
     document.getElementById('correctCriteria').value = '';
     document.getElementById('partialCriteria').value = '';
     document.getElementById('incorrectCriteria').value = '';
+
+    // Limpiar editores de subpreguntas
+    subquestionEditors = {};
+
     document.getElementById('subquestionsContainer').innerHTML =
         '<div class="text-center py-3 text-muted" id="noSubquestionsMessage">Agrega subpreguntas con opciones de respuesta</div>';
     document.getElementById('partialCriteriaGroup').style.display = 'none';
@@ -401,7 +425,7 @@ function loadItem(itemId) {
     currentItemId = itemId;
     document.getElementById('itemId').value = item.id;
     document.getElementById('itemCode').value = item.code;
-    document.getElementById('itemInstruction').value = item.instruction;
+    instructionQuill.root.innerHTML = item.instruction;
     document.getElementById('itemOrder').value = item.order;
     document.getElementById('scoringType').value = item.scoring_type;
     document.getElementById('correctCriteria').value = item.correct_criteria;
@@ -415,6 +439,9 @@ function loadItem(itemId) {
     document.getElementById('partialCriteriaGroup').style.display =
         item.scoring_type === 'P' ? 'block' : 'none';
 
+    // Limpiar editores anteriores
+    subquestionEditors = {};
+
     // Cargar subpreguntas
     const container = document.getElementById('subquestionsContainer');
     container.innerHTML = '';
@@ -425,6 +452,8 @@ function loadItem(itemId) {
         item.subquestions.forEach((subq, index) => {
             const subqCard = createSubquestionCard(subq, index + 1);
             container.appendChild(subqCard);
+            // Inicializar editor despues de agregar al DOM
+            initSubquestionEditor(subqCard);
         });
     }
 }
@@ -433,12 +462,15 @@ function createSubquestionCard(subqData, number) {
     const template = document.getElementById('subquestionTemplate');
     const card = template.content.cloneNode(true).querySelector('.subquestion-card');
 
-    card.dataset.subquestionId = subqData.id || 'new_' + (++tempSubquestionId);
+    const subqId = subqData.id || 'new_' + (++tempSubquestionId);
+    card.dataset.subquestionId = subqId;
     card.querySelector('.subq-number').textContent = number;
-    card.querySelector('.subq-context').value = subqData.context_text || '';
+
+    // Guardar contenido inicial para cargar despues de inicializar Quill
+    card.dataset.initialContent = subqData.context_text || '';
 
     const optionsContainer = card.querySelector('.options-container');
-    const radioName = 'correct_' + card.dataset.subquestionId;
+    const radioName = 'correct_' + subqId;
 
     if (subqData.options && subqData.options.length > 0) {
         subqData.options.forEach(opt => {
@@ -448,6 +480,34 @@ function createSubquestionCard(subqData, number) {
     }
 
     return card;
+}
+
+function initSubquestionEditor(card) {
+    const subqId = card.dataset.subquestionId;
+    const editorContainer = card.querySelector('.subq-context-editor');
+    const initialContent = card.dataset.initialContent || '';
+
+    // Inicializar Quill con toolbar compacta
+    const quill = new Quill(editorContainer, {
+        theme: 'snow',
+        placeholder: 'Escribe el contenido de la subpregunta...',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline'],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                ['link', 'image'],
+                ['clean']
+            ]
+        }
+    });
+
+    // Cargar contenido inicial
+    if (initialContent) {
+        quill.root.innerHTML = initialContent;
+    }
+
+    // Guardar referencia
+    subquestionEditors[subqId] = quill;
 }
 
 function createOptionRow(optData, radioName) {
@@ -482,6 +542,9 @@ function addSubquestion() {
     });
 
     container.appendChild(card);
+
+    // Inicializar editor Quill despues de agregar al DOM
+    initSubquestionEditor(card);
 }
 
 function addOption(subqCard) {
@@ -517,10 +580,15 @@ function collectFormData() {
             });
         });
 
+        // Obtener contenido del editor Quill
+        const subqId = card.dataset.subquestionId;
+        const editor = subquestionEditors[subqId];
+        const contextText = editor ? editor.root.innerHTML : '';
+
         subquestions.push({
-            id: card.dataset.subquestionId.startsWith('new_') ? null : parseInt(card.dataset.subquestionId),
+            id: subqId.startsWith('new_') ? null : parseInt(subqId),
             order: subqIndex + 1,
-            context_text: card.querySelector('.subq-context').value,
+            context_text: contextText,
             options: options
         });
     });
@@ -528,7 +596,7 @@ function collectFormData() {
     return {
         exam_id: EXAM_ID,
         code: document.getElementById('itemCode').value,
-        instruction: document.getElementById('itemInstruction').value,
+        instruction: instructionQuill.root.innerHTML,
         order: parseInt(document.getElementById('itemOrder').value),
         scoring_type: document.getElementById('scoringType').value,
         correct_criteria: document.getElementById('correctCriteria').value,
@@ -542,7 +610,8 @@ async function saveItem() {
     const data = collectFormData();
 
     // Validaciones basicas
-    if (!data.code || !data.instruction) {
+    const instructionText = instructionQuill.getText().trim();
+    if (!data.code || !instructionText) {
         Swal.fire('Error', 'El codigo e instruccion son obligatorios.', 'error');
         return;
     }

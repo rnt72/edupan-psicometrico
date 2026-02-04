@@ -11,11 +11,7 @@
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h4 class="mb-1">{{ exam.name }}</h4>
-                <p class="text-muted mb-0">
-                    <span class="badge bg-info-subtle text-info">{{ exam.grade_level.name }}</span>
-                    <span class="badge bg-primary-subtle text-primary ms-1">{{ exam.subject_area.name }}</span>
-                    <span class="badge bg-light text-dark ms-1">{{ exam.items.count }} items</span>
-                </p>
+                <span class="badge bg-light text-dark">{{ exam.items.count }} items</span>
             </div>
             <div class="d-flex gap-2">
                 <a href="{% url 'exams:editor' exam.pk %}" class="btn btn-primary">
@@ -35,10 +31,10 @@
 <div class="card mb-3">
     <div class="card-header bg-light">
         <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">
+            <div class="mb-0">
                 <span class="badge bg-primary me-2">{{ item.code }}</span>
-                {{ item.instruction }}
-            </h5>
+                <div class="d-inline">{{ item.instruction|safe }}</div>
+            </div>
             <span class="badge {% if item.scoring_type == 'D' %}bg-info{% else %}bg-warning{% endif %}">
                 {% if item.scoring_type == 'D' %}Dicotomico{% else %}Politomico{% endif %}
             </span>
@@ -56,7 +52,7 @@
             <div class="col-md-{% if item.subquestions.count == 1 %}12{% elif item.subquestions.count == 2 %}6{% else %}4{% endif %} mb-3">
                 <div class="border rounded p-3 h-100">
                     {% if subq.context_text %}
-                    <p class="text-muted small mb-2">{{ subq.context_text }}</p>
+                    <div class="mb-2">{{ subq.context_text|safe }}</div>
                     {% endif %}
 
                     {% if subq.image %}

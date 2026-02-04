@@ -6,21 +6,18 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views import View
-from django.views.generic import CreateView
 from django.views.generic import DeleteView
 from django.views.generic import DetailView
 from django.views.generic import ListView
 
 from .models import Exam
-from .models import GradeLevel
 from .models import Item
 from .models import Option
-from .models import SubjectArea
 from .models import SubQuestion
 
 
 class ExamListView(LoginRequiredMixin, ListView):
-    """Lista de exámenes con filtros"""
+    """Lista de exámenes"""
 
     model = Exam
     template_name = "pages/exam-list.html"
@@ -28,17 +25,9 @@ class ExamListView(LoginRequiredMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = Exam.objects.select_related("grade_level", "subject_area", "created_by")
-
-        # Filtros
-        grade = self.request.GET.get("grade")
-        subject = self.request.GET.get("subject")
+        queryset = Exam.objects.select_related("created_by")
         search = self.request.GET.get("search")
 
-        if grade:
-            queryset = queryset.filter(grade_level_id=grade)
-        if subject:
-            queryset = queryset.filter(subject_area_id=subject)
         if search:
             queryset = queryset.filter(name__icontains=search)
 
@@ -46,10 +35,6 @@ class ExamListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["grade_levels"] = GradeLevel.objects.all()
-        context["subject_areas"] = SubjectArea.objects.all()
-        context["selected_grade"] = self.request.GET.get("grade", "")
-        context["selected_subject"] = self.request.GET.get("subject", "")
         context["search_query"] = self.request.GET.get("search", "")
         return context
 
@@ -68,42 +53,18 @@ class ExamCreateView(LoginRequiredMixin, View):
         from django.shortcuts import redirect, render
 
         name = request.POST.get("name", "").strip()
-        grade_name = request.POST.get("grade_level", "").strip()
-        subject_name = request.POST.get("subject_area", "").strip()
-        description = request.POST.get("description", "").strip()
 
         # Validaciones
         errors = {}
         if not name:
             errors["name"] = "El nombre es obligatorio"
-        if not grade_name:
-            errors["grade_level"] = "El nivel de grado es obligatorio"
-        if not subject_name:
-            errors["subject_area"] = "El area/materia es obligatoria"
 
         if errors:
             return render(request, self.template_name, {"errors": errors})
 
-        # Obtener o crear GradeLevel
-        grade_code = grade_name[:10].upper().replace(" ", "").replace("-", "")
-        grade_level, _ = GradeLevel.objects.get_or_create(
-            name=grade_name,
-            defaults={"code": grade_code, "order": 0},
-        )
-
-        # Obtener o crear SubjectArea
-        subject_code = subject_name[:10].upper().replace(" ", "")
-        subject_area, _ = SubjectArea.objects.get_or_create(
-            name=subject_name,
-            defaults={"code": subject_code},
-        )
-
         # Crear examen
         exam = Exam.objects.create(
             name=name,
-            grade_level=grade_level,
-            subject_area=subject_area,
-            description=description,
             created_by=request.user,
         )
 
@@ -120,7 +81,7 @@ class ExamEditorView(LoginRequiredMixin, DetailView):
     def get_queryset(self):
         return Exam.objects.prefetch_related(
             "items__subquestions__options",
-        ).select_related("grade_level", "subject_area")
+        ).select_related("created_by")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -138,7 +99,7 @@ class ExamPreviewView(LoginRequiredMixin, DetailView):
     def get_queryset(self):
         return Exam.objects.prefetch_related(
             "items__subquestions__options",
-        ).select_related("grade_level", "subject_area")
+        ).select_related("created_by")
 
 
 class ExamDeleteView(LoginRequiredMixin, DeleteView):

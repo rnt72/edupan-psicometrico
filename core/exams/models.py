@@ -38,19 +38,6 @@ class Exam(models.Model):
     """Plantilla de examen psicométrico"""
 
     name = models.CharField("Nombre del Examen", max_length=255)
-    grade_level = models.ForeignKey(
-        GradeLevel,
-        on_delete=models.PROTECT,
-        related_name="exams",
-        verbose_name="Nivel de Grado",
-    )
-    subject_area = models.ForeignKey(
-        SubjectArea,
-        on_delete=models.PROTECT,
-        related_name="exams",
-        verbose_name="Área/Materia",
-    )
-    description = models.TextField("Descripción", blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -152,11 +139,10 @@ class SubQuestion(models.Model):
         blank=True,
         null=True,
     )
-    context_text = models.CharField(
-        "Texto de contexto",
-        max_length=500,
+    context_text = models.TextField(
+        "Contenido",
         blank=True,
-        help_text="Texto adicional si aplica (ej: descripción de imagen)",
+        help_text="Contenido de la subpregunta (puede incluir texto, tablas, imágenes)",
     )
 
     class Meta:

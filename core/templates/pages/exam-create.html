@@ -7,7 +7,7 @@
 {% block page_content %}
 
 <div class="row">
-    <div class="col-xl-8 col-lg-10 mx-auto">
+    <div class="col-xl-6 col-lg-8 mx-auto">
         <div class="card">
             <div class="card-header">
                 <h4 class="card-title mb-0">Crear Nuevo Examen</h4>
@@ -16,39 +16,13 @@
                 <form method="post" class="needs-validation" novalidate>
                     {% csrf_token %}
 
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="name" class="form-label">Nombre del Examen <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="name" name="name"
-                               placeholder="Ej: Evaluacion Diagnostica Espanol 2do-3er Grado"
-                               value="{{ form.name.value|default:'' }}" required>
-                        {% if form.name.errors %}
-                        <div class="invalid-feedback d-block">{{ form.name.errors.0 }}</div>
+                        <input type="text" class="form-control form-control-lg" id="name" name="name"
+                               placeholder="Ej: Evaluacion Diagnostica Espanol 2do-3er Grado" required>
+                        {% if errors.name %}
+                        <div class="invalid-feedback d-block">{{ errors.name }}</div>
                         {% endif %}
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="grade_level" class="form-label">Nivel de Grado <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="grade_level" name="grade_level"
-                                       placeholder="Ej: 2do-3er Grado" required>
-                                <small class="text-muted">Escribe el nivel de grado escolar</small>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="subject_area" class="form-label">Area/Materia <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="subject_area" name="subject_area"
-                                       placeholder="Ej: Espanol, Matematicas" required>
-                                <small class="text-muted">Escribe el area o materia</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Descripcion</label>
-                        <textarea class="form-control" id="description" name="description" rows="3"
-                                  placeholder="Descripcion opcional del examen...">{{ form.description.value|default:'' }}</textarea>
                     </div>
 
                     <div class="d-flex gap-2 justify-content-end">
@@ -63,20 +37,6 @@
                 </form>
             </div>
         </div>
-
-        <!-- Ayuda -->
-        <div class="card border-info">
-            <div class="card-body">
-                <h5 class="card-title text-info">
-                    <iconify-icon icon="solar:info-circle-broken" class="align-middle me-1"></iconify-icon>
-                    Informacion
-                </h5>
-                <p class="card-text text-muted mb-0">
-                    Despues de crear el examen, podras agregar items (preguntas) con sus subpreguntas y opciones de respuesta
-                    usando el editor interactivo.
-                </p>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -84,7 +44,6 @@
 
 {% block extra_javascript %}
 <script>
-// Validacion de formulario
 (function () {
     'use strict'
     var forms = document.querySelectorAll('.needs-validation')
