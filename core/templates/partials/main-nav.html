@@ -1,6 +1,6 @@
 {% load static i18n %}
 
-<div class="main-nav">
+<div class="main-nav" style="background-color: #123F68 !important;">
   <!-- Sidebar Logo -->
   <div class="logo-box">
     <a href="/" class="logo-dark">
@@ -24,16 +24,36 @@
 
       <li class="menu-title">General</li>
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="/">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:widget-5-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Dashboard </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
       <li class="nav-item">
+        <a class="nav-link menu-arrow" href="#sidebarExams" data-bs-toggle="collapse" role="button"
+           aria-expanded="false" aria-controls="sidebarExams">
+                         <span class="nav-icon">
+                              <iconify-icon icon="solar:document-text-bold-duotone"></iconify-icon>
+                         </span>
+          <span class="nav-text"> Examenes </span>
+        </a>
+        <div class="collapse" id="sidebarExams">
+          <ul class="nav sub-navbar-nav">
+            <li class="sub-nav-item">
+              <a class="sub-nav-link" href="{% url 'exams:list' %}">Lista</a>
+            </li>
+            <li class="sub-nav-item">
+              <a class="sub-nav-link" href="{% url 'exams:create' %}">Crear</a>
+            </li>
+          </ul>
+        </div>
+      </li> 
+
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarProducts" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarProducts">
                          <span class="nav-icon">
@@ -60,9 +80,14 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      
+      
+
+
+      {% comment %} 
+       <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarCategory" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarCategory">
                          <span class="nav-icon">
@@ -83,9 +108,10 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> 
+      {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarInventory" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarInventory">
                          <span class="nav-icon">
@@ -104,9 +130,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarOrders" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarOrders">
                          <span class="nav-icon">
@@ -131,9 +157,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarPurchases" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarPurchases">
                          <span class="nav-icon">
@@ -154,9 +180,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarAttributes" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarAttributes">
                          <span class="nav-icon">
@@ -177,9 +203,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarInvoice" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarInvoice">
                          <span class="nav-icon">
@@ -200,29 +226,29 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='settings' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:settings-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Settings </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="menu-title mt-2">Users</li>
+      {% comment %} <li class="menu-title mt-2">Users</li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='pages-profile' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:chat-square-like-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Profile </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarRoles" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarRoles">
                          <span class="nav-icon">
@@ -245,18 +271,18 @@
             </ul>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='permissions' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:checklist-minimalistic-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Permissions </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarCustomers" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarCustomers">
                          <span class="nav-icon">
@@ -275,9 +301,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarSellers" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarSellers">
                          <span class="nav-icon">
@@ -301,11 +327,11 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="menu-title mt-2">Other</li>
+      {% comment %} <li class="menu-title mt-2">Other</li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarCoupons" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarCoupons">
                          <span class="nav-icon">
@@ -323,87 +349,87 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='pages-reviews' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:chat-square-like-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Reviews </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="menu-title mt-2">Other Apps</li>
+      {% comment %} <li class="menu-title mt-2">Other Apps</li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='apps-chat' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:chat-round-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Chat </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='apps-email' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:mailbox-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Email </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='apps-calendar' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:calendar-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Calendar </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='apps-todo' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:checklist-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Todo </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="menu-title mt-2">Support</li>
+      {% comment %} <li class="menu-title mt-2">Support</li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='help-center' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:help-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Help Center </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='faqs' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:question-circle-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> FAQs </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='privacy-policy' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:document-text-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Privacy Policy </span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="menu-title mt-2">Custom</li>
+      {% comment %} <li class="menu-title mt-2">Custom</li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarPages" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarPages">
                          <span class="nav-icon">
@@ -436,9 +462,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarAuthentication" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarAuthentication">
                          <span class="nav-icon">
@@ -464,9 +490,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="{% url 'pages:dynamic_pages' template_name='widgets' %}">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:atom-bold-duotone"></iconify-icon>
@@ -474,11 +500,11 @@
           <span class="nav-text">Widgets</span>
           <span class="badge bg-info badge-pill text-end">9+</span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="menu-title mt-2">Components</li>
+      {% comment %} <li class="menu-title mt-2">Components</li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarBaseUI" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarBaseUI">
                          <span class="nav-icon">
@@ -556,9 +582,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarExtendedUI" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarExtendedUI">
                          <span class="nav-icon">
@@ -585,9 +611,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarCharts" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarCharts">
                          <span class="nav-icon">
@@ -647,9 +673,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarForms" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarForms">
                          <span class="nav-icon">
@@ -694,9 +720,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarTables" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarTables">
                          <span class="nav-icon">
@@ -714,9 +740,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarIcons" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarIcons">
                          <span class="nav-icon">
@@ -734,9 +760,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarMaps" data-bs-toggle="collapse" role="button" aria-expanded="false"
            aria-controls="sidebarMaps">
                          <span class="nav-icon">
@@ -754,9 +780,9 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link" href="javascript:void(0);">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:volleyball-bold-duotone"></iconify-icon>
@@ -764,9 +790,9 @@
           <span class="nav-text">Badge Menu</span>
           <span class="badge bg-danger badge-pill text-end">1</span>
         </a>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link menu-arrow" href="#sidebarMultiLevelDemo" data-bs-toggle="collapse" role="button"
            aria-expanded="false" aria-controls="sidebarMultiLevelDemo">
                          <span class="nav-icon">
@@ -794,16 +820,16 @@
             </li>
           </ul>
         </div>
-      </li>
+      </li> {% endcomment %}
 
-      <li class="nav-item">
+      {% comment %} <li class="nav-item">
         <a class="nav-link disabled" href="javascript:void(0);">
                          <span class="nav-icon">
                               <iconify-icon icon="solar:user-block-rounded-bold-duotone"></iconify-icon>
                          </span>
           <span class="nav-text"> Disable Item </span>
         </a>
-      </li>
+      </li> {% endcomment %}
     </ul>
   </div>
 </div>
