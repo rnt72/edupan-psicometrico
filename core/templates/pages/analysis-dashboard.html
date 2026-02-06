@@ -1,0 +1,141 @@
+{% extends 'layout-vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Análisis Winsteps{% endblock %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card">
+            <div class="d-flex card-header justify-content-between align-items-center">
+                <div>
+                    <h4 class="card-title">Análisis y Exportación Winsteps</h4>
+                    <p class="text-muted mb-0">Selecciona un examen para crear aplicaciones y capturar respuestas</p>
+                </div>
+            </div>
+
+            <div class="card-body">
+                {% for exam in exams %}
+                <div class="card border mb-3">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">
+                                <iconify-icon icon="solar:document-text-bold-duotone" class="align-middle text-primary me-1"></iconify-icon>
+                                {{ exam.name }}
+                            </h5>
+                            <small class="text-muted">{{ exam.items.count }} ítems</small>
+                        </div>
+                        <a href="{% url 'responses:application-create' exam.pk %}" class="btn btn-primary btn-sm">
+                            <iconify-icon icon="solar:add-circle-broken" class="align-middle me-1"></iconify-icon>
+                            Nueva Aplicación
+                        </a>
+                    </div>
+
+                    {% if exam.applications.all %}
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0 table-hover table-centered">
+                            <thead class="bg-light-subtle">
+                                <tr>
+                                    <th>Aplicación</th>
+                                    <th>Alumnos</th>
+                                    <th>Fecha</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for app in exam.applications.all %}
+                                <tr>
+                                    <td class="fw-medium">{{ app.name }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ app.total_rows }} alumnos</span>
+                                    </td>
+                                    <td>{{ app.created_at|date:"d M Y H:i" }}</td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <a href="{% url 'responses:capture-redirect' app.pk %}" 
+                                               class="btn btn-soft-primary btn-sm" title="Capturar respuestas">
+                                                <iconify-icon icon="solar:pen-2-broken" class="align-middle fs-18"></iconify-icon>
+                                                Capturar
+                                            </a>
+                                            <a href="{% url 'responses:export' app.pk %}" 
+                                               class="btn btn-soft-success btn-sm" title="Exportar a Winsteps">
+                                                <iconify-icon icon="solar:download-minimalistic-broken" class="align-middle fs-18"></iconify-icon>
+                                                Exportar TXT
+                                            </a>
+                                            <button type="button" 
+                                                    class="btn btn-soft-danger btn-sm btn-delete-app"
+                                                    data-app-id="{{ app.pk }}" 
+                                                    data-app-name="{{ app.name }}" 
+                                                    title="Eliminar">
+                                                <iconify-icon icon="solar:trash-bin-minimalistic-2-broken" class="align-middle fs-18"></iconify-icon>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="card-body text-center py-4">
+                        <p class="text-muted mb-0">No hay aplicaciones registradas para este examen</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="text-center py-5">
+                    <iconify-icon icon="solar:document-broken" class="fs-48 text-muted"></iconify-icon>
+                    <p class="text-muted mt-2 mb-0">No hay exámenes activos</p>
+                    <a href="{% url 'exams:create' %}" class="btn btn-primary btn-sm mt-3">
+                        Crear primer examen
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-delete-app').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const appId = this.dataset.appId;
+            const appName = this.dataset.appName;
+
+            Swal.fire({
+                title: '¿Eliminar aplicación?',
+                text: `Se eliminará "${appName}" y todas sus respuestas.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef5f5f',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/analysis/application/${appId}/delete/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        }
+                    });
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock extra_javascript %}

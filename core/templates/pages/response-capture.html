@@ -1,0 +1,403 @@
+{% extends 'layout-vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Captura: {{ exam.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .score-btn {
+        min-width: 40px;
+        font-weight: 600;
+    }
+    .score-btn.active {
+        box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.4);
+    }
+    .option-radio:checked + .option-label {
+        background-color: #e8f4fd;
+        border-color: #0d6efd;
+    }
+    .option-label {
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 2px solid transparent;
+        border-radius: 0.375rem;
+        padding: 0.5rem 0.75rem;
+    }
+    .option-label:hover {
+        background-color: #f0f0f0;
+    }
+    .option-label.is-correct-feedback {
+        background-color: #d1e7dd !important;
+        border-color: #198754 !important;
+    }
+    .option-label.is-incorrect-feedback {
+        background-color: #f8d7da !important;
+        border-color: #dc3545 !important;
+    }
+    .student-nav {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+</style>
+{% endblock extra_css %}
+
+{% block page_content %}
+
+<!-- Barra de navegación de alumno (sticky) -->
+<div class="card mb-3 student-nav">
+    <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                {% if prev_row %}
+                <a href="{% url 'responses:capture' application.pk prev_row.pk %}" class="btn btn-outline-primary btn-sm">
+                    <iconify-icon icon="solar:arrow-left-broken" class="align-middle"></iconify-icon>
+                    Anterior
+                </a>
+                {% else %}
+                <button class="btn btn-outline-secondary btn-sm" disabled>
+                    <iconify-icon icon="solar:arrow-left-broken" class="align-middle"></iconify-icon>
+                    Anterior
+                </button>
+                {% endif %}
+
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fw-bold fs-5 text-primary">Alumno {{ current_row.row_number }}</span>
+                    <span class="text-muted">de {{ all_rows|length }}</span>
+                    <select class="form-select form-select-sm" style="width: auto;" id="student-selector">
+                        {% for row in all_rows %}
+                        <option value="{{ row.pk }}" {% if row.pk == current_row.pk %}selected{% endif %}>
+                            Alumno {{ row.row_number }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if next_row %}
+                <a href="{% url 'responses:capture' application.pk next_row.pk %}" class="btn btn-outline-primary btn-sm">
+                    Siguiente
+                    <iconify-icon icon="solar:arrow-right-broken" class="align-middle"></iconify-icon>
+                </a>
+                {% else %}
+                <button class="btn btn-outline-secondary btn-sm" disabled>
+                    Siguiente
+                    <iconify-icon icon="solar:arrow-right-broken" class="align-middle"></iconify-icon>
+                </button>
+                {% endif %}
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="btn-add-row">
+                    <iconify-icon icon="solar:add-circle-broken" class="align-middle me-1"></iconify-icon>
+                    + Alumno
+                </button>
+                <a href="{% url 'responses:export' application.pk %}" class="btn btn-success btn-sm">
+                    <iconify-icon icon="solar:download-minimalistic-broken" class="align-middle me-1"></iconify-icon>
+                    Exportar TXT
+                </a>
+                <a href="{% url 'responses:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                    Volver
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Info del examen -->
+<div class="mb-3">
+    <h4 class="mb-1">{{ exam.name }}</h4>
+    <p class="text-muted mb-0">Aplicación: <strong>{{ application.name }}</strong></p>
+</div>
+
+<!-- Ítems del examen -->
+{% for item in items %}
+<div class="card mb-3" id="item-card-{{ item.id }}">
+    <div class="card-header bg-light">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="mb-0 flex-grow-1">
+                <span class="badge bg-primary me-2">{{ item.code }}</span>
+                <span class="badge {% if item.scoring_type == 'D' %}bg-info{% else %}bg-warning{% endif %} me-2">
+                    {% if item.scoring_type == 'D' %}Dicotómico{% else %}Politómico{% endif %}
+                </span>
+                <div class="d-inline">{{ item.instruction|safe }}</div>
+            </div>
+            <!-- Puntuación directa del ítem -->
+            <div class="d-flex align-items-center gap-2 ms-3 flex-shrink-0">
+                <span class="text-muted small fw-semibold">Puntuación:</span>
+                <div class="btn-group" role="group" data-item-id="{{ item.id }}" data-scoring-type="{{ item.scoring_type }}">
+                    <button type="button" class="btn btn-sm btn-outline-danger score-btn" data-score="0" title="Incorrecta">0</button>
+                    <button type="button" class="btn btn-sm btn-outline-warning score-btn" data-score="1" 
+                            title="{% if item.scoring_type == 'D' %}Correcta{% else %}Parcialmente correcta{% endif %}">1</button>
+                    {% if item.scoring_type == 'P' %}
+                    <button type="button" class="btn btn-sm btn-outline-success score-btn" data-score="2" title="Correcta">2</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if item.image %}
+        <div class="mb-3">
+            <img src="{{ item.image.url }}" class="img-fluid rounded" style="max-height: 200px;" alt="Imagen del ítem">
+        </div>
+        {% endif %}
+
+        {% if item.correct_criteria or item.partial_criteria or item.incorrect_criteria %}
+        <div class="alert alert-light border mb-3 py-2">
+            <small class="fw-semibold text-muted">Criterios de calificación:</small>
+            <div class="row mt-1">
+                {% if item.incorrect_criteria %}
+                <div class="col-auto">
+                    <small><span class="badge bg-danger-subtle text-danger">0</span> {{ item.incorrect_criteria }}</small>
+                </div>
+                {% endif %}
+                {% if item.partial_criteria and item.scoring_type == 'P' %}
+                <div class="col-auto">
+                    <small><span class="badge bg-warning-subtle text-warning">1</span> {{ item.partial_criteria }}</small>
+                </div>
+                {% endif %}
+                {% if item.correct_criteria %}
+                <div class="col-auto">
+                    <small><span class="badge bg-success-subtle text-success">{% if item.scoring_type == 'D' %}1{% else %}2{% endif %}</span> {{ item.correct_criteria }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            {% for subq in item.subquestions.all %}
+            <div class="col-md-{% if item.subquestions.count == 1 %}12{% elif item.subquestions.count == 2 %}6{% else %}4{% endif %} mb-3">
+                <div class="border rounded p-3 h-100">
+                    {% if subq.context_text %}
+                    <div class="mb-2">{{ subq.context_text|safe }}</div>
+                    {% endif %}
+
+                    {% if subq.image %}
+                    <div class="mb-2">
+                        <img src="{{ subq.image.url }}" class="img-fluid rounded" style="max-height: 100px;" alt="Imagen subpregunta">
+                    </div>
+                    {% endif %}
+
+                    {% if subq.options.all %}
+                    <!-- Opciones de respuesta (radio buttons interactivos) -->
+                    {% for option in subq.options.all %}
+                    <div class="mb-1">
+                        <input class="form-check-input option-radio d-none" 
+                               type="radio"
+                               name="subq_{{ subq.id }}" 
+                               id="opt_{{ option.id }}"
+                               value="{{ option.id }}"
+                               data-subq-id="{{ subq.id }}"
+                               data-option-id="{{ option.id }}"
+                               data-item-id="{{ item.id }}"
+                               {% if existing_responses|dictsort:"0" %}{% endif %}>
+                        <label class="option-label d-block" for="opt_{{ option.id }}">
+                            <span class="fw-semibold">{{ option.label }}.</span> {{ option.text }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <!-- Pregunta abierta: sin opciones, usa la puntuación directa del ítem -->
+                    <div class="text-muted fst-italic">
+                        <iconify-icon icon="solar:pen-new-square-broken" class="align-middle me-1"></iconify-icon>
+                        Pregunta abierta — use la puntuación directa del ítem
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="text-muted fst-italic">
+                    <iconify-icon icon="solar:pen-new-square-broken" class="align-middle me-1"></iconify-icon>
+                    Sin subpreguntas — use la puntuación directa del ítem
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% empty %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <iconify-icon icon="solar:document-broken" class="fs-48 text-muted"></iconify-icon>
+        <p class="text-muted mt-2">Este examen no tiene ítems definidos.</p>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = '{{ csrf_token }}';
+    const applicationPk = {{ application.pk }};
+    const currentRowId = {{ current_row.pk }};
+    const existingResponses = JSON.parse('{{ existing_responses_json|escapejs }}');
+    const existingItemScores = JSON.parse('{{ existing_item_scores_json|escapejs }}');
+
+    // =========================================
+    // Restaurar respuestas existentes (opciones)
+    // =========================================
+    Object.keys(existingResponses).forEach(function(subqId) {
+        const data = existingResponses[subqId];
+        if (data && data.option_id) {
+            const radio = document.getElementById('opt_' + data.option_id);
+            if (radio) {
+                radio.checked = true;
+                const label = radio.nextElementSibling;
+                label.classList.add(data.is_correct ? 'is-correct-feedback' : 'is-incorrect-feedback');
+            }
+        }
+    });
+
+    // =============================================
+    // Restaurar puntuaciones directas existentes
+    // =============================================
+    Object.keys(existingItemScores).forEach(function(itemId) {
+        const score = existingItemScores[itemId];
+        const btnGroup = document.querySelector(`.btn-group[data-item-id="${itemId}"]`);
+        if (btnGroup) {
+            const btn = btnGroup.querySelector(`[data-score="${score}"]`);
+            if (btn) {
+                // Limpiar todos
+                btnGroup.querySelectorAll('.score-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.classList.replace('btn-outline-danger', 'btn-outline-danger');
+                });
+                btn.classList.add('active');
+                activateScoreBtn(btn, score);
+            }
+        }
+    });
+
+    function activateScoreBtn(btn, score) {
+        const group = btn.closest('.btn-group');
+        // Reset all buttons in group
+        group.querySelectorAll('.score-btn').forEach(b => {
+            b.classList.remove('active', 'btn-danger', 'btn-warning', 'btn-success');
+            const s = parseInt(b.dataset.score);
+            if (s === 0) b.classList.add('btn-outline-danger');
+            else if (s === 1) b.classList.add('btn-outline-warning');
+            else if (s === 2) b.classList.add('btn-outline-success');
+        });
+        // Activate clicked
+        btn.classList.add('active');
+        btn.classList.remove('btn-outline-danger', 'btn-outline-warning', 'btn-outline-success');
+        if (score === 0) btn.classList.add('btn-danger');
+        else if (score === 1) btn.classList.add('btn-warning');
+        else if (score === 2) btn.classList.add('btn-success');
+    }
+
+    // ===================================
+    // Handler: seleccionar opción (radio)
+    // ===================================
+    document.querySelectorAll('.option-radio').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            const subqId = parseInt(this.dataset.subqId);
+            const optionId = parseInt(this.dataset.optionId);
+            const itemId = parseInt(this.dataset.itemId);
+
+            // Limpiar feedback visual de este grupo
+            document.querySelectorAll(`input[name="subq_${subqId}"]`).forEach(function(r) {
+                const label = r.nextElementSibling;
+                label.classList.remove('is-correct-feedback', 'is-incorrect-feedback');
+            });
+
+            fetch(`/analysis/application/${applicationPk}/api/save-response/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    row_id: currentRowId,
+                    subquestion_id: subqId,
+                    option_id: optionId,
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Feedback visual en la opción seleccionada
+                    const label = this.nextElementSibling;
+                    label.classList.add(data.is_correct ? 'is-correct-feedback' : 'is-incorrect-feedback');
+
+                    // Actualizar botón de puntuación directa del ítem
+                    const btnGroup = document.querySelector(`.btn-group[data-item-id="${data.item_id}"]`);
+                    if (btnGroup) {
+                        const btn = btnGroup.querySelector(`[data-score="${data.item_auto_score}"]`);
+                        if (btn) activateScoreBtn(btn, data.item_auto_score);
+                    }
+                }
+            })
+            .catch(err => console.error('Error:', err));
+        });
+    });
+
+    // ==========================================
+    // Handler: puntuación directa (botones 0/1/2)
+    // ==========================================
+    document.querySelectorAll('.score-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const itemId = parseInt(this.closest('.btn-group').dataset.itemId);
+            const score = parseInt(this.dataset.score);
+
+            activateScoreBtn(this, score);
+
+            fetch(`/analysis/application/${applicationPk}/api/save-item-score/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    row_id: currentRowId,
+                    item_id: itemId,
+                    score: score,
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    Swal.fire('Error', data.error || 'No se pudo guardar', 'error');
+                }
+            })
+            .catch(err => console.error('Error:', err));
+        });
+    });
+
+    // ==========================
+    // Navegación por alumno
+    // ==========================
+    document.getElementById('student-selector').addEventListener('change', function() {
+        const rowPk = this.value;
+        window.location.href = `/analysis/application/${applicationPk}/capture/${rowPk}/`;
+    });
+
+    // ==========================
+    // Agregar alumno
+    // ==========================
+    document.getElementById('btn-add-row').addEventListener('click', function() {
+        fetch(`/analysis/application/${applicationPk}/api/add-row/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Navegar al nuevo alumno
+                window.location.href = `/analysis/application/${applicationPk}/capture/${data.row_id}/`;
+            }
+        })
+        .catch(err => console.error('Error:', err));
+    });
+});
+</script>
+{% endblock extra_javascript %}

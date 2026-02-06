@@ -1,0 +1,73 @@
+{% extends 'layout-vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Nueva Aplicación{% endblock %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-xl-6 col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Nueva Aplicación de Examen</h4>
+                <p class="text-muted mb-0 mt-1">Examen: <strong>{{ exam.name }}</strong></p>
+            </div>
+            <div class="card-body">
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label for="name" class="form-label">Nombre de la aplicación <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg" id="name" name="name"
+                               placeholder="Ej: Aplicación Marzo 2026" 
+                               value="{{ form_data.name|default:'' }}" required>
+                        {% if errors.name %}
+                        <div class="invalid-feedback d-block">{{ errors.name }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="num_rows" class="form-label">Cantidad de alumnos <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="num_rows" name="num_rows"
+                               value="{{ form_data.num_rows|default:'10' }}" min="1" max="500" required>
+                        <div class="form-text">Puedes agregar más alumnos después en la grilla de captura</div>
+                        {% if errors.num_rows %}
+                        <div class="invalid-feedback d-block">{{ errors.num_rows }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{% url 'responses:dashboard' %}" class="btn btn-outline-secondary">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <iconify-icon icon="solar:add-circle-broken" class="align-middle me-1"></iconify-icon>
+                            Crear Aplicación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script>
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+        }, false)
+    })
+})()
+</script>
+{% endblock extra_javascript %}
