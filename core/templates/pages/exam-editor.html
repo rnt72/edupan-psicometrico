@@ -284,6 +284,8 @@ let instructionQuill = null;
 
 // Almacenar editores Quill de subpreguntas
 let subquestionEditors = {};
+let removedSubquestionIds = new Set();
+let removedOptionIds = new Set();
 
 document.addEventListener('DOMContentLoaded', function() {
     // Inicializar editor Quill
@@ -380,6 +382,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target.closest('.btn-delete-subq')) {
             const card = e.target.closest('.subquestion-card');
             const subqId = card.dataset.subquestionId;
+            if (subqId && !subqId.startsWith('new_')) {
+                removedSubquestionIds.add(parseInt(subqId));
+            }
             // Eliminar referencia al editor
             delete subquestionEditors[subqId];
             card.remove();
@@ -395,6 +400,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Eliminar opcion
         if (e.target.closest('.btn-delete-option')) {
             const row = e.target.closest('.option-row');
+            const optId = row.dataset.optionId;
+            if (optId && !optId.startsWith('new_')) {
+                removedOptionIds.add(parseInt(optId));
+            }
             row.remove();
         }
     });
@@ -412,6 +421,8 @@ function clearForm() {
 
     // Limpiar editores de subpreguntas
     subquestionEditors = {};
+    removedSubquestionIds.clear();
+    removedOptionIds.clear();
 
     document.getElementById('subquestionsContainer').innerHTML =
         '<div class="text-center py-3 text-muted" id="noSubquestionsMessage">Agrega subpreguntas con opciones de respuesta</div>';
@@ -441,6 +452,8 @@ function loadItem(itemId) {
 
     // Limpiar editores anteriores
     subquestionEditors = {};
+    removedSubquestionIds.clear();
+    removedOptionIds.clear();
 
     // Cargar subpreguntas
     const container = document.getElementById('subquestionsContainer');
@@ -662,6 +675,25 @@ async function saveItem() {
 }
 
 async function saveSubquestionsAndOptions(itemId, subquestions) {
+    // Procesar eliminaciones primero
+    for (const optId of removedOptionIds) {
+        await fetch(`/exams/api/options/${optId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN
+            }
+        });
+    }
+
+    for (const subqId of removedSubquestionIds) {
+        await fetch(`/exams/api/subquestions/${subqId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN
+            }
+        });
+    }
+
     for (const subq of subquestions) {
         let subqId = subq.id;
 
