@@ -16083,7 +16083,7 @@ html[data-menu-size=hidden] .topbar {
   border-left-color: var(--bs-primary);
 }
 .wrapper .main-nav .navbar-nav .nav-item .nav-link.active .nav-icon {
-  color: var(--bs-primary);
+  color: #fff;
 }
 .wrapper .main-nav .navbar-nav .nav-item .nav-link.show, .wrapper .main-nav .navbar-nav .nav-item .nav-link.active, .wrapper .main-nav .navbar-nav .nav-item .nav-link:active, .wrapper .main-nav .navbar-nav .nav-item .nav-link:hover, .wrapper .main-nav .navbar-nav .nav-item .nav-link:focus {
   color: var(--bs-main-nav-item-hover-color);

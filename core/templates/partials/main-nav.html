@@ -1,16 +1,16 @@
 {% load static i18n %}
 
-<div class="main-nav" style="background-color: #123F68 !important;">
+<div class="main-nav" style="background-color: #172C53 !important;">
   <!-- Sidebar Logo -->
-  <div class="logo-box">
+  <div class="logo-box" style="width: 100%;">
     <a href="/" class="logo-dark">
       <img src="{% static 'images/logo-sm.png' %}" class="logo-sm" alt="logo sm">
-      <img src="{% static 'images/logo-dark.png' %}" class="logo-lg" alt="logo dark">
+      <img src="{% static 'images/logo-dark.png' %}" class="logo-lg w-100" alt="logo dark" style="height: 64px; object-fit: contain;">
     </a>
 
     <a href="/" class="logo-light">
       <img src="{% static 'images/logo-sm.png' %}" class="logo-sm" alt="logo sm">
-      <img src="{% static 'images/logo-light.png' %}" class="logo-lg" alt="logo light">
+      <img src="{% static 'images/logo-light.png' %}" class="logo-lg w-100" alt="logo light" style="height: 64px; object-fit: contain;">
     </a>
   </div>
 
@@ -39,7 +39,7 @@
                          <span class="nav-icon">
                               <iconify-icon icon="solar:document-text-bold-duotone"></iconify-icon>
                          </span>
-          <span class="nav-text"> Examenes </span>
+          <span class="nav-text"> Exámenes </span>
         </a>
         <div class="collapse" id="sidebarExams">
           <ul class="nav sub-navbar-nav">
