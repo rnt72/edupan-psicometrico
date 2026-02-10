@@ -34,6 +34,11 @@ urlpatterns = [
         name="pivot-export",
     ),
     path(
+        "application/<int:pk>/pivot-table/",
+        views.PivotTableView.as_view(),
+        name="pivot-table",
+    ),
+    path(
         "application/<int:pk>/delete/",
         views.ApplicationDeleteView.as_view(),
         name="application-delete",

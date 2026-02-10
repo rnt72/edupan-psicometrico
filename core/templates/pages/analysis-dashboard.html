@@ -16,6 +16,52 @@
                 </div>
             </div>
 
+            <!-- Filtros por Región e Institución -->
+            <div class="card-body border-bottom">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="filter-region" class="form-label fw-medium">
+                            <iconify-icon icon="solar:map-point-broken" class="align-middle me-1"></iconify-icon>
+                            Región
+                        </label>
+                        <select name="region" id="filter-region" class="form-select">
+                            <option value="">Todas las regiones</option>
+                            {% for region in regions %}
+                            <option value="{{ region.pk }}" {% if selected_region == region.pk|stringformat:"d" %}selected{% endif %}>
+                                {{ region.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filter-institution" class="form-label fw-medium">
+                            <iconify-icon icon="solar:buildings-broken" class="align-middle me-1"></iconify-icon>
+                            Institución
+                        </label>
+                        <select name="institution" id="filter-institution" class="form-select" {% if not selected_region %}disabled{% endif %}>
+                            <option value="">Todas las instituciones</option>
+                            {% for inst in institutions %}
+                            <option value="{{ inst.pk }}" {% if selected_institution == inst.pk|stringformat:"d" %}selected{% endif %}>
+                                {{ inst.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <iconify-icon icon="solar:filter-broken" class="align-middle me-1"></iconify-icon>
+                            Filtrar
+                        </button>
+                        {% if selected_region or selected_institution %}
+                        <a href="{% url 'responses:dashboard' %}" class="btn btn-soft-secondary">
+                            <iconify-icon icon="solar:close-circle-broken" class="align-middle me-1"></iconify-icon>
+                            Limpiar
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+
             <div class="card-body">
                 {% for exam in exams %}
                 <div class="card border mb-3">
@@ -33,7 +79,8 @@
                         </a>
                     </div>
 
-                    {% if exam.applications.all %}
+                    {% with apps=exam.applications.all %}
+                    {% if apps %}
                     <div class="table-responsive">
                         <table class="table align-middle mb-0 table-hover table-centered">
                             <thead class="bg-light-subtle">
@@ -47,7 +94,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for app in exam.applications.all %}
+                                {% for app in apps %}
+                                {% if filtered_app_ids == None or app.pk in filtered_app_ids %}
                                 <tr>
                                     <td class="fw-medium">{{ app.name }}</td>
                                     <td>
@@ -75,6 +123,11 @@
                                                 <iconify-icon icon="solar:pen-2-broken" class="align-middle fs-18"></iconify-icon>
                                                 Capturar
                                             </a>
+                                            <a href="{% url 'responses:pivot-table' app.pk %}" 
+                                               class="btn btn-soft-warning btn-sm" title="Ver tabla de respuestas">
+                                                <iconify-icon icon="solar:eye-broken" class="align-middle fs-18"></iconify-icon>
+                                                Ver
+                                            </a>
                                             <a href="{% url 'responses:pivot-export' app.pk %}" 
                                                class="btn btn-soft-info btn-sm" title="Exportar tabla cruzada CSV">
                                                 <iconify-icon icon="solar:table-broken" class="align-middle fs-18"></iconify-icon>
@@ -95,6 +148,7 @@
                                         </div>
                                     </td>
                                 </tr>
+                                {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -104,6 +158,7 @@
                         <p class="text-muted mb-0">No hay aplicaciones registradas para este examen</p>
                     </div>
                     {% endif %}
+                    {% endwith %}
                 </div>
                 {% empty %}
                 <div class="text-center py-5">
@@ -124,6 +179,36 @@
 {% block extra_javascript %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Filtro dinámico de instituciones por región
+    const regionSelect = document.getElementById('filter-region');
+    const institutionSelect = document.getElementById('filter-institution');
+
+    regionSelect.addEventListener('change', function() {
+        const regionId = this.value;
+        institutionSelect.innerHTML = '<option value="">Todas las instituciones</option>';
+
+        if (!regionId) {
+            institutionSelect.disabled = true;
+            return;
+        }
+
+        institutionSelect.disabled = false;
+
+        fetch(`/students/api/institutions/${regionId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.institutions) {
+                    data.institutions.forEach(function(inst) {
+                        const option = document.createElement('option');
+                        option.value = inst.id;
+                        option.textContent = inst.name;
+                        institutionSelect.appendChild(option);
+                    });
+                }
+            });
+    });
+
+    // Eliminar aplicación
     document.querySelectorAll('.btn-delete-app').forEach(function(btn) {
         btn.addEventListener('click', function() {
             const appId = this.dataset.appId;

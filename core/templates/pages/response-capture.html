@@ -147,9 +147,9 @@
         <div class="d-flex justify-content-between align-items-start">
             <div class="mb-0 flex-grow-1">
                 <span class="badge bg-primary me-2">{{ item.code }}</span>
-                <span class="badge {% if item.scoring_type == 'D' %}bg-info{% else %}bg-warning{% endif %} me-2">
+                {% comment %} <span class="badge {% if item.scoring_type == 'D' %}bg-info{% else %}bg-warning{% endif %} me-2">
                     {% if item.scoring_type == 'D' %}Dicotómico{% else %}Politómico{% endif %}
-                </span>
+                </span> {% endcomment %}
                 <div class="d-inline">{{ item.instruction|safe }}</div>
             </div>
             <!-- Puntuación directa del ítem -->
@@ -173,7 +173,7 @@
         </div>
         {% endif %}
 
-        {% if item.correct_criteria or item.partial_criteria or item.incorrect_criteria %}
+        {% comment %} {% if item.correct_criteria or item.partial_criteria or item.incorrect_criteria %}
         <div class="alert alert-light border mb-3 py-2">
             <small class="fw-semibold text-muted">Criterios de calificación:</small>
             <div class="row mt-1">
@@ -194,7 +194,7 @@
                 {% endif %}
             </div>
         </div>
-        {% endif %}
+        {% endif %} {% endcomment %}
 
         <div class="row">
             {% for subq in item.subquestions.all %}

@@ -1,0 +1,76 @@
+{% extends 'layout-vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Tabla de Respuestas{% endblock %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card">
+            <div class="d-flex card-header justify-content-between align-items-center">
+                <div>
+                    <h4 class="card-title">
+                        <iconify-icon icon="solar:table-bold-duotone" class="align-middle text-primary me-1"></iconify-icon>
+                        Tabla de Respuestas
+                    </h4>
+                    <p class="text-muted mb-0">
+                        {{ exam.name }} — {{ application.name }}
+                        <span class="badge bg-light text-dark ms-2">{{ total_rows }} estudiantes</span>
+                        <span class="badge bg-light text-dark">{{ total_columns }} columnas</span>
+                    </p>
+                </div>
+                <a href="{% url 'responses:dashboard' %}" class="btn btn-soft-secondary btn-sm">
+                    <iconify-icon icon="solar:arrow-left-broken" class="align-middle me-1 fs-18"></iconify-icon>
+                    Volver
+                </a>
+            </div>
+
+            <!-- Tabla pivot -->
+            <div class="card-body">
+                {% if rows_data %}
+                <div class="table-responsive" style="max-height: 70vh; overflow: auto;">
+                    <table class="table table-bordered table-hover table-centered table-sm mb-0" style="font-size: 0.85rem;">
+                        <thead class="bg-light-subtle" style="position: sticky; top: 0; z-index: 2;">
+                            <tr>
+                                <th class="text-nowrap" style="position: sticky; left: 0; z-index: 3; background: #f8f9fa; min-width: 140px;">
+                                    IDENTIFICACIÓN
+                                </th>
+                                {% for col in columns %}
+                                <th class="text-center text-nowrap px-2">{{ col }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in rows_data %}
+                            <tr>
+                                <td class="fw-medium text-nowrap" style="position: sticky; left: 0; z-index: 1; background: #fff;">
+                                    <code class="text-dark">{{ row.identification }}</code>
+                                </td>
+                                {% for val in row.values %}
+                                <td class="text-center px-2">
+                                    {% if val %}
+                                    <span class="badge bg-light text-dark">{{ val }}</span>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <iconify-icon icon="solar:document-broken" class="fs-48 text-muted"></iconify-icon>
+                    <p class="text-muted mt-2 mb-0">No hay respuestas registradas en esta aplicación</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock page_content %}

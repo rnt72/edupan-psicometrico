@@ -26,7 +26,9 @@ from .models import ResponseRow
 
 
 class AnalysisDashboardView(LoginRequiredMixin, ListView):
-    """Dashboard principal de análisis: lista exámenes con sus aplicaciones"""
+    """Dashboard principal de análisis: lista exámenes con sus aplicaciones.
+    Soporta filtros por región e institución via query params.
+    """
 
     model = Exam
     template_name = "pages/analysis-dashboard.html"
@@ -37,6 +39,33 @@ class AnalysisDashboardView(LoginRequiredMixin, ListView):
             "applications__region",
             "applications__institution",
         )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        region_id = self.request.GET.get("region", "")
+        institution_id = self.request.GET.get("institution", "")
+
+        context["regions"] = Region.objects.all()
+        context["selected_region"] = region_id
+        context["selected_institution"] = institution_id
+
+        if region_id:
+            context["institutions"] = Institution.objects.filter(region_id=region_id)
+        else:
+            context["institutions"] = Institution.objects.none()
+
+        # Filtrar aplicaciones por región/institución
+        if region_id or institution_id:
+            apps_qs = ExamApplication.objects.select_related("region", "institution")
+            if region_id:
+                apps_qs = apps_qs.filter(region_id=region_id)
+            if institution_id:
+                apps_qs = apps_qs.filter(institution_id=institution_id)
+            context["filtered_app_ids"] = set(apps_qs.values_list("id", flat=True))
+        else:
+            context["filtered_app_ids"] = None  # None = no filter, show all
+
+        return context
 
 
 class ApplicationCreateView(LoginRequiredMixin, View):
@@ -517,3 +546,73 @@ class PivotExportView(LoginRequiredMixin, View):
             writer.writerow(row_data)
 
         return response
+
+
+class PivotTableView(LoginRequiredMixin, View):
+    """Vista web de tabla cruzada: misma data que el CSV pero renderizada en HTML."""
+
+    template_name = "pages/pivot-table.html"
+
+    def get(self, request, pk):
+        application = get_object_or_404(
+            ExamApplication.objects.select_related("exam", "region", "institution"),
+            pk=pk,
+        )
+        exam = application.exam
+
+        # Obtener ítems y subpreguntas ordenados
+        items = list(
+            exam.items.prefetch_related("subquestions").order_by("order")
+        )
+
+        # Construir columnas dinámicas (misma lógica que PivotExportView)
+        columns = []
+        for item in items:
+            subqs = list(item.subquestions.order_by("order"))
+            if len(subqs) == 1:
+                columns.append((item.code, subqs[0].id))
+            else:
+                for sq in subqs:
+                    columns.append((f"{item.code}_{sq.order}", sq.id))
+
+        # Obtener filas con estudiante
+        rows = list(
+            application.rows.select_related("student").order_by("row_number")
+        )
+
+        # Cargar respuestas
+        row_ids = [r.id for r in rows]
+        all_responses = {}
+        for resp in Response.objects.filter(
+            row_id__in=row_ids
+        ).select_related("selected_option"):
+            all_responses[(resp.row_id, resp.subquestion_id)] = resp
+
+        # Construir datos de filas para el template
+        rows_data = []
+        for row in rows:
+            identification = row.student.reference_code if row.student else f"Fila-{row.row_number}"
+            values = []
+            for _col_name, subq_id in columns:
+                resp = all_responses.get((row.id, subq_id))
+                if resp is None:
+                    values.append("")
+                elif resp.text_response:
+                    values.append(resp.text_response)
+                elif resp.selected_option:
+                    values.append(resp.selected_option.label)
+                else:
+                    values.append("")
+            rows_data.append({
+                "identification": identification,
+                "values": values,
+            })
+
+        return render(request, self.template_name, {
+            "application": application,
+            "exam": exam,
+            "columns": [col_name for col_name, _ in columns],
+            "rows_data": rows_data,
+            "total_rows": len(rows_data),
+            "total_columns": len(columns),
+        })
