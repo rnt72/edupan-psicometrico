@@ -16,6 +16,7 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
     path("exams/", include("core.exams.urls", namespace="exams")),
     path("analysis/", include("core.responses.urls", namespace="responses")),
+    path("students/", include("core.students.urls", namespace="students")),
     path("", include("core.pages.urls", namespace="pages")),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),

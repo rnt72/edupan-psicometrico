@@ -28,13 +28,42 @@
                     </div>
 
                     <div class="mb-4">
-                        <label for="num_rows" class="form-label">Cantidad de alumnos <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" id="num_rows" name="num_rows"
-                               value="{{ form_data.num_rows|default:'10' }}" min="1" max="500" required>
-                        <div class="form-text">Puedes agregar más alumnos después en la grilla de captura</div>
-                        {% if errors.num_rows %}
-                        <div class="invalid-feedback d-block">{{ errors.num_rows }}</div>
+                        <label for="region" class="form-label">Región</label>
+                        <select class="form-select" id="region" name="region">
+                            <option value="">— Seleccionar región —</option>
+                            {% for region in regions %}
+                            <option value="{{ region.pk }}" {% if form_data.region == region.pk|stringformat:"s" %}selected{% endif %}>
+                                {{ region.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if errors.region %}
+                        <div class="invalid-feedback d-block">{{ errors.region }}</div>
                         {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="institution" class="form-label">Institución</label>
+                        <select class="form-select" id="institution" name="institution" disabled>
+                            <option value="">— Primero seleccione una región —</option>
+                        </select>
+                        {% if errors.institution %}
+                        <div class="invalid-feedback d-block">{{ errors.institution }}</div>
+                        {% endif %}
+                        <div class="mt-2" id="new-institution-group" style="display: none;">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="new_institution_name" 
+                                       name="new_institution_name" placeholder="Nombre de nueva institución"
+                                       value="{{ form_data.new_institution_name|default:'' }}">
+                                <button type="button" class="btn btn-outline-secondary" id="btn-cancel-new-institution">
+                                    Cancelar
+                                </button>
+                            </div>
+                            <div class="form-text">Se creará automáticamente al guardar</div>
+                        </div>
+                        <button type="button" class="btn btn-link btn-sm p-0 mt-1" id="btn-new-institution" style="display: none;">
+                            + Agregar nueva institución
+                        </button>
                     </div>
 
                     <div class="d-flex gap-2 justify-content-end">
@@ -57,17 +86,75 @@
 {% block extra_javascript %}
 <script>
 (function () {
-    'use strict'
-    var forms = document.querySelectorAll('.needs-validation')
+    'use strict';
+
+    // Form validation
+    var forms = document.querySelectorAll('.needs-validation');
     Array.prototype.slice.call(forms).forEach(function (form) {
         form.addEventListener('submit', function (event) {
             if (!form.checkValidity()) {
-                event.preventDefault()
-                event.stopPropagation()
+                event.preventDefault();
+                event.stopPropagation();
             }
-            form.classList.add('was-validated')
-        }, false)
-    })
-})()
+            form.classList.add('was-validated');
+        }, false);
+    });
+
+    const regionSelect = document.getElementById('region');
+    const institutionSelect = document.getElementById('institution');
+    const btnNewInstitution = document.getElementById('btn-new-institution');
+    const newInstitutionGroup = document.getElementById('new-institution-group');
+    const newInstitutionInput = document.getElementById('new_institution_name');
+    const btnCancelNewInstitution = document.getElementById('btn-cancel-new-institution');
+
+    // Cuando cambia la región, cargar instituciones
+    regionSelect.addEventListener('change', function() {
+        const regionId = this.value;
+        institutionSelect.innerHTML = '<option value="">— Cargando... —</option>';
+        
+        if (!regionId) {
+            institutionSelect.innerHTML = '<option value="">— Primero seleccione una región —</option>';
+            institutionSelect.disabled = true;
+            btnNewInstitution.style.display = 'none';
+            newInstitutionGroup.style.display = 'none';
+            return;
+        }
+
+        fetch(`/students/api/institutions/${regionId}/`)
+            .then(r => r.json())
+            .then(data => {
+                institutionSelect.innerHTML = '<option value="">— Seleccionar institución —</option>';
+                data.institutions.forEach(function(inst) {
+                    const option = document.createElement('option');
+                    option.value = inst.id;
+                    option.textContent = inst.name + (inst.code ? ` (${inst.code})` : '');
+                    institutionSelect.appendChild(option);
+                });
+                institutionSelect.disabled = false;
+                btnNewInstitution.style.display = '';
+            })
+            .catch(err => {
+                console.error(err);
+                institutionSelect.innerHTML = '<option value="">— Error al cargar —</option>';
+            });
+    });
+
+    // Botón "nueva institución"
+    btnNewInstitution.addEventListener('click', function() {
+        newInstitutionGroup.style.display = '';
+        institutionSelect.disabled = true;
+        institutionSelect.value = '';
+        btnNewInstitution.style.display = 'none';
+        newInstitutionInput.focus();
+    });
+
+    // Cancelar nueva institución
+    btnCancelNewInstitution.addEventListener('click', function() {
+        newInstitutionGroup.style.display = 'none';
+        newInstitutionInput.value = '';
+        institutionSelect.disabled = false;
+        btnNewInstitution.style.display = '';
+    });
+})();
 </script>
 {% endblock extra_javascript %}

@@ -50,7 +50,7 @@
     <div class="card-body py-2">
         <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                {% if prev_row %}
+                {% if not is_empty and prev_row %}
                 <a href="{% url 'responses:capture' application.pk prev_row.pk %}" class="btn btn-outline-primary btn-sm">
                     <iconify-icon icon="solar:arrow-left-broken" class="align-middle"></iconify-icon>
                     Anterior
@@ -63,18 +63,27 @@
                 {% endif %}
 
                 <div class="d-flex align-items-center gap-2">
-                    <span class="fw-bold fs-5 text-primary">Alumno {{ current_row.row_number }}</span>
-                    <span class="text-muted">de {{ all_rows|length }}</span>
+                    {% if is_empty %}
+                    <span class="fw-bold fs-5 text-muted">Sin alumnos</span>
+                    <span class="text-muted">— Agregue uno para comenzar</span>
+                    {% else %}
+                    <span class="fw-bold fs-5 text-primary">
+                        {{ current_row.student.reference_code|default:"Sin código" }}
+                    </span>
+                    <span class="text-muted">
+                        ({{ current_row.row_number }} de {{ all_rows|length }})
+                    </span>
                     <select class="form-select form-select-sm" style="width: auto;" id="student-selector">
                         {% for row in all_rows %}
-                        <option value="{{ row.pk }}" {% if row.pk == current_row.pk %}selected{% endif %}>
-                            Alumno {{ row.row_number }}
+                        <option value="{{ row.pk }}" {% if current_row and row.pk == current_row.pk %}selected{% endif %}>
+                            {{ row.student.reference_code|default:"Alumno" }} (#{{ row.row_number }})
                         </option>
                         {% endfor %}
                     </select>
+                    {% endif %}
                 </div>
 
-                {% if next_row %}
+                {% if not is_empty and next_row %}
                 <a href="{% url 'responses:capture' application.pk next_row.pk %}" class="btn btn-outline-primary btn-sm">
                     Siguiente
                     <iconify-icon icon="solar:arrow-right-broken" class="align-middle"></iconify-icon>
@@ -92,6 +101,10 @@
                     <iconify-icon icon="solar:add-circle-broken" class="align-middle me-1"></iconify-icon>
                     + Alumno
                 </button>
+                <a href="{% url 'responses:pivot-export' application.pk %}" class="btn btn-info btn-sm" title="Exportar tabla cruzada CSV">
+                    <iconify-icon icon="solar:table-broken" class="align-middle me-1"></iconify-icon>
+                    Exportar CSV
+                </a>
                 <a href="{% url 'responses:export' application.pk %}" class="btn btn-success btn-sm">
                     <iconify-icon icon="solar:download-minimalistic-broken" class="align-middle me-1"></iconify-icon>
                     Exportar TXT
@@ -107,9 +120,26 @@
 <!-- Info del examen -->
 <div class="mb-3">
     <h4 class="mb-1">{{ exam.name }}</h4>
-    <p class="text-muted mb-0">Aplicación: <strong>{{ application.name }}</strong></p>
+    <p class="text-muted mb-0">
+        Aplicación: <strong>{{ application.name }}</strong>
+        {% if application.region %} | Región: <strong>{{ application.region.name }}</strong>{% endif %}
+        {% if application.institution %} | Institución: <strong>{{ application.institution.name }}</strong>{% endif %}
+    </p>
 </div>
 
+{% if is_empty %}
+<!-- Estado vacío -->
+<div class="card">
+    <div class="card-body text-center py-5">
+        <iconify-icon icon="solar:user-plus-broken" class="fs-48 text-muted"></iconify-icon>
+        <p class="text-muted mt-2 mb-3">No hay alumnos todavía. Presione el botón para agregar el primero.</p>
+        <button type="button" class="btn btn-primary" id="btn-add-row-empty">
+            <iconify-icon icon="solar:add-circle-broken" class="align-middle me-1"></iconify-icon>
+            Agregar primer alumno
+        </button>
+    </div>
+</div>
+{% else %}
 <!-- Ítems del examen -->
 {% for item in items %}
 <div class="card mb-3" id="item-card-{{ item.id }}">
@@ -191,18 +221,24 @@
                                value="{{ option.id }}"
                                data-subq-id="{{ subq.id }}"
                                data-option-id="{{ option.id }}"
-                               data-item-id="{{ item.id }}"
-                               {% if existing_responses|dictsort:"0" %}{% endif %}>
+                               data-item-id="{{ item.id }}">
                         <label class="option-label d-block" for="opt_{{ option.id }}">
                             <span class="fw-semibold">{{ option.label }}.</span> {{ option.text }}
                         </label>
                     </div>
                     {% endfor %}
                     {% else %}
-                    <!-- Pregunta abierta: sin opciones, usa la puntuación directa del ítem -->
-                    <div class="text-muted fst-italic">
-                        <iconify-icon icon="solar:pen-new-square-broken" class="align-middle me-1"></iconify-icon>
-                        Pregunta abierta — use la puntuación directa del ítem
+                    <!-- Pregunta abierta: textarea para texto + puntuación directa -->
+                    <div class="mb-2">
+                        <label class="form-label text-muted small">
+                            <iconify-icon icon="solar:pen-new-square-broken" class="align-middle me-1"></iconify-icon>
+                            Respuesta abierta
+                        </label>
+                        <textarea class="form-control text-response-input" 
+                                  rows="3" 
+                                  data-subq-id="{{ subq.id }}"
+                                  data-item-id="{{ item.id }}"
+                                  placeholder="Escriba la respuesta del alumno..."></textarea>
                     </div>
                     {% endif %}
                 </div>
@@ -226,6 +262,7 @@
     </div>
 </div>
 {% endfor %}
+{% endif %}
 
 {% endblock page_content %}
 
@@ -234,7 +271,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = '{{ csrf_token }}';
     const applicationPk = {{ application.pk }};
-    const currentRowId = {{ current_row.pk }};
+    const isEmpty = {{ is_empty|yesno:"true,false" }};
+    const currentRowId = {% if current_row %}{{ current_row.pk }}{% else %}null{% endif %};
     const existingResponses = JSON.parse('{{ existing_responses_json|escapejs }}');
     const existingItemScores = JSON.parse('{{ existing_item_scores_json|escapejs }}');
 
@@ -251,6 +289,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 label.classList.add(data.is_correct ? 'is-correct-feedback' : 'is-incorrect-feedback');
             }
         }
+        // Restaurar respuestas de texto
+        if (data && data.text_response) {
+            const textarea = document.querySelector(`textarea[data-subq-id="${subqId}"]`);
+            if (textarea) {
+                textarea.value = data.text_response;
+            }
+        }
     });
 
     // =============================================
@@ -262,12 +307,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btnGroup) {
             const btn = btnGroup.querySelector(`[data-score="${score}"]`);
             if (btn) {
-                // Limpiar todos
-                btnGroup.querySelectorAll('.score-btn').forEach(b => {
-                    b.classList.remove('active');
-                    b.classList.replace('btn-outline-danger', 'btn-outline-danger');
-                });
-                btn.classList.add('active');
                 activateScoreBtn(btn, score);
             }
         }
@@ -275,7 +314,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function activateScoreBtn(btn, score) {
         const group = btn.closest('.btn-group');
-        // Reset all buttons in group
         group.querySelectorAll('.score-btn').forEach(b => {
             b.classList.remove('active', 'btn-danger', 'btn-warning', 'btn-success');
             const s = parseInt(b.dataset.score);
@@ -283,7 +321,6 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (s === 1) b.classList.add('btn-outline-warning');
             else if (s === 2) b.classList.add('btn-outline-success');
         });
-        // Activate clicked
         btn.classList.add('active');
         btn.classList.remove('btn-outline-danger', 'btn-outline-warning', 'btn-outline-success');
         if (score === 0) btn.classList.add('btn-danger');
@@ -300,7 +337,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const optionId = parseInt(this.dataset.optionId);
             const itemId = parseInt(this.dataset.itemId);
 
-            // Limpiar feedback visual de este grupo
             document.querySelectorAll(`input[name="subq_${subqId}"]`).forEach(function(r) {
                 const label = r.nextElementSibling;
                 label.classList.remove('is-correct-feedback', 'is-incorrect-feedback');
@@ -321,11 +357,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    // Feedback visual en la opción seleccionada
                     const label = this.nextElementSibling;
                     label.classList.add(data.is_correct ? 'is-correct-feedback' : 'is-incorrect-feedback');
 
-                    // Actualizar botón de puntuación directa del ítem
                     const btnGroup = document.querySelector(`.btn-group[data-item-id="${data.item_id}"]`);
                     if (btnGroup) {
                         const btn = btnGroup.querySelector(`[data-score="${data.item_auto_score}"]`);
@@ -334,6 +368,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(err => console.error('Error:', err));
+        });
+    });
+
+    // ==========================================
+    // Handler: respuesta de texto (textarea) con debounce
+    // ==========================================
+    let textTimers = {};
+    document.querySelectorAll('.text-response-input').forEach(function(textarea) {
+        textarea.addEventListener('input', function() {
+            const subqId = parseInt(this.dataset.subqId);
+            const textValue = this.value;
+
+            // Debounce: esperar 800ms después de que el usuario deje de escribir
+            clearTimeout(textTimers[subqId]);
+            textTimers[subqId] = setTimeout(function() {
+                fetch(`/analysis/application/${applicationPk}/api/save-response/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        row_id: currentRowId,
+                        subquestion_id: subqId,
+                        text_response: textValue,
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) {
+                        console.error('Error saving text response:', data.error);
+                    }
+                })
+                .catch(err => console.error('Error:', err));
+            }, 800);
         });
     });
 
@@ -372,15 +441,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==========================
     // Navegación por alumno
     // ==========================
-    document.getElementById('student-selector').addEventListener('change', function() {
-        const rowPk = this.value;
-        window.location.href = `/analysis/application/${applicationPk}/capture/${rowPk}/`;
-    });
+    const studentSelector = document.getElementById('student-selector');
+    if (studentSelector) {
+        studentSelector.addEventListener('change', function() {
+            const rowPk = this.value;
+            window.location.href = `/analysis/application/${applicationPk}/capture/${rowPk}/`;
+        });
+    }
 
     // ==========================
     // Agregar alumno
     // ==========================
-    document.getElementById('btn-add-row').addEventListener('click', function() {
+    function addStudent() {
         fetch(`/analysis/application/${applicationPk}/api/add-row/`, {
             method: 'POST',
             headers: {
@@ -392,12 +464,18 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                // Navegar al nuevo alumno
                 window.location.href = `/analysis/application/${applicationPk}/capture/${data.row_id}/`;
             }
         })
         .catch(err => console.error('Error:', err));
-    });
+    }
+
+    document.getElementById('btn-add-row').addEventListener('click', addStudent);
+    
+    const btnAddEmpty = document.getElementById('btn-add-row-empty');
+    if (btnAddEmpty) {
+        btnAddEmpty.addEventListener('click', addStudent);
+    }
 });
 </script>
 {% endblock extra_javascript %}

@@ -26,24 +26,30 @@ class ItemScoreInline(admin.TabularInline):
 
 @admin.register(ExamApplication)
 class ExamApplicationAdmin(admin.ModelAdmin):
-    list_display = ["name", "exam", "created_by", "created_at", "total_rows"]
-    list_filter = ["exam", "created_by"]
+    list_display = ["name", "exam", "region", "institution", "created_by", "created_at", "total_rows"]
+    list_filter = ["exam", "region", "institution", "created_by"]
     search_fields = ["name", "exam__name"]
     inlines = [ResponseRowInline]
 
 
 @admin.register(ResponseRow)
 class ResponseRowAdmin(admin.ModelAdmin):
-    list_display = ["row_number", "application"]
+    list_display = ["row_number", "student", "application"]
     list_filter = ["application"]
     inlines = [ResponseInline, ItemScoreInline]
 
 
 @admin.register(Response)
 class ResponseAdmin(admin.ModelAdmin):
-    list_display = ["row", "subquestion", "selected_option", "is_correct"]
+    list_display = ["row", "subquestion", "selected_option", "text_response_short", "is_correct"]
     list_filter = ["is_correct", "row__application"]
     raw_id_fields = ["row", "subquestion", "selected_option"]
+
+    @admin.display(description="Texto respuesta")
+    def text_response_short(self, obj):
+        if obj.text_response:
+            return obj.text_response[:50] + ("..." if len(obj.text_response) > 50 else "")
+        return "—"
 
 
 @admin.register(ItemScore)

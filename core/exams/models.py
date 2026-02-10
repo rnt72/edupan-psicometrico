@@ -55,7 +55,7 @@ class Exam(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.name} - {self.grade_level} ({self.subject_area})"
+        return self.name
 
     def get_absolute_url(self):
         return reverse("exams:editor", kwargs={"pk": self.pk})

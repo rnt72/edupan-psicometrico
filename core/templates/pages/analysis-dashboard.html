@@ -39,6 +39,8 @@
                             <thead class="bg-light-subtle">
                                 <tr>
                                     <th>Aplicación</th>
+                                    <th>Región</th>
+                                    <th>Institución</th>
                                     <th>Alumnos</th>
                                     <th>Fecha</th>
                                     <th>Acciones</th>
@@ -48,6 +50,20 @@
                                 {% for app in exam.applications.all %}
                                 <tr>
                                     <td class="fw-medium">{{ app.name }}</td>
+                                    <td>
+                                        {% if app.region %}
+                                        <span class="badge bg-light text-dark">{{ app.region.name }}</span>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if app.institution %}
+                                        <span class="badge bg-light text-dark">{{ app.institution.name }}</span>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <span class="badge bg-light text-dark">{{ app.total_rows }} alumnos</span>
                                     </td>
@@ -59,10 +75,15 @@
                                                 <iconify-icon icon="solar:pen-2-broken" class="align-middle fs-18"></iconify-icon>
                                                 Capturar
                                             </a>
+                                            <a href="{% url 'responses:pivot-export' app.pk %}" 
+                                               class="btn btn-soft-info btn-sm" title="Exportar tabla cruzada CSV">
+                                                <iconify-icon icon="solar:table-broken" class="align-middle fs-18"></iconify-icon>
+                                                CSV
+                                            </a>
                                             <a href="{% url 'responses:export' app.pk %}" 
                                                class="btn btn-soft-success btn-sm" title="Exportar a Winsteps">
                                                 <iconify-icon icon="solar:download-minimalistic-broken" class="align-middle fs-18"></iconify-icon>
-                                                Exportar TXT
+                                                TXT
                                             </a>
                                             <button type="button" 
                                                     class="btn btn-soft-danger btn-sm btn-delete-app"

@@ -16,6 +16,22 @@ class ExamApplication(models.Model):
         max_length=255,
         help_text="Ej: Aplicación Marzo 2026",
     )
+    region = models.ForeignKey(
+        "students.Region",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="applications",
+        verbose_name="Región",
+    )
+    institution = models.ForeignKey(
+        "students.Institution",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="applications",
+        verbose_name="Institución",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -39,7 +55,7 @@ class ExamApplication(models.Model):
 
 
 class ResponseRow(models.Model):
-    """Fila de respuestas (un alumno anónimo identificado solo por número)"""
+    """Fila de respuestas vinculada a un estudiante anónimo"""
 
     application = models.ForeignKey(
         ExamApplication,
@@ -48,6 +64,14 @@ class ResponseRow(models.Model):
         verbose_name="Aplicación",
     )
     row_number = models.PositiveIntegerField("Número de fila")
+    student = models.ForeignKey(
+        "students.Student",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="response_rows",
+        verbose_name="Estudiante",
+    )
 
     class Meta:
         verbose_name = "Fila de Respuesta"
@@ -56,7 +80,8 @@ class ResponseRow(models.Model):
         unique_together = ["application", "row_number"]
 
     def __str__(self):
-        return f"Alumno {self.row_number} - {self.application.name}"
+        label = self.student.reference_code if self.student else f"Fila {self.row_number}"
+        return f"{label} - {self.application.name}"
 
 
 class Response(models.Model):
@@ -82,6 +107,12 @@ class Response(models.Model):
         related_name="responses",
         verbose_name="Opción seleccionada",
     )
+    text_response = models.TextField(
+        "Respuesta de texto",
+        null=True,
+        blank=True,
+        help_text="Para preguntas abiertas o sub-preguntas que requieren texto",
+    )
     is_correct = models.BooleanField("Es correcta", default=False)
 
     class Meta:
@@ -94,10 +125,12 @@ class Response(models.Model):
         return f"Alumno {self.row.row_number} → {self.subquestion} = {option_label}"
 
     def save(self, *args, **kwargs):
-        """Auto-calcula is_correct basado en selected_option.is_correct"""
+        """Auto-calcula is_correct basado en selected_option.is_correct.
+        Para respuestas de texto (abiertas), is_correct queda False (evaluación manual).
+        """
         if self.selected_option:
             self.is_correct = self.selected_option.is_correct
-        else:
+        elif not self.text_response:
             self.is_correct = False
         # Asegurar que is_correct se guarde cuando update_or_create pasa update_fields
         update_fields = kwargs.get('update_fields')

@@ -1,3 +1,4 @@
+import csv
 import json
 
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -14,6 +15,9 @@ from core.exams.models import Exam
 from core.exams.models import Item
 from core.exams.models import Option
 from core.exams.models import SubQuestion
+from core.students.models import Institution
+from core.students.models import Region
+from core.students.models import Student
 
 from .models import ExamApplication
 from .models import ItemScore
@@ -29,33 +33,57 @@ class AnalysisDashboardView(LoginRequiredMixin, ListView):
     context_object_name = "exams"
 
     def get_queryset(self):
-        return Exam.objects.filter(is_active=True).prefetch_related("applications")
+        return Exam.objects.filter(is_active=True).prefetch_related(
+            "applications__region",
+            "applications__institution",
+        )
 
 
 class ApplicationCreateView(LoginRequiredMixin, View):
-    """Crear nueva aplicación de examen"""
+    """Crear nueva aplicación de examen con región e institución"""
 
     template_name = "pages/application-create.html"
 
     def get(self, request, exam_pk):
         exam = get_object_or_404(Exam, pk=exam_pk)
-        return render(request, self.template_name, {"exam": exam})
+        regions = Region.objects.all()
+        return render(request, self.template_name, {
+            "exam": exam,
+            "regions": regions,
+        })
 
     def post(self, request, exam_pk):
         exam = get_object_or_404(Exam, pk=exam_pk)
+        regions = Region.objects.all()
         name = request.POST.get("name", "").strip()
-        num_rows = request.POST.get("num_rows", "10")
+        region_id = request.POST.get("region", "")
+        institution_id = request.POST.get("institution", "")
+        new_institution_name = request.POST.get("new_institution_name", "").strip()
 
         errors = {}
         if not name:
             errors["name"] = "El nombre es obligatorio"
 
-        try:
-            num_rows = int(num_rows)
-            if num_rows < 1 or num_rows > 500:
-                errors["num_rows"] = "Debe ser entre 1 y 500"
-        except (ValueError, TypeError):
-            errors["num_rows"] = "Debe ser un número válido"
+        region = None
+        if region_id:
+            try:
+                region = Region.objects.get(pk=region_id)
+            except Region.DoesNotExist:
+                errors["region"] = "Región no válida"
+
+        institution = None
+        if institution_id:
+            try:
+                institution = Institution.objects.get(pk=institution_id)
+            except Institution.DoesNotExist:
+                errors["institution"] = "Institución no válida"
+        elif new_institution_name and region:
+            # Crear institución on-the-fly
+            institution, _ = Institution.objects.get_or_create(
+                name=new_institution_name,
+                region=region,
+                defaults={"code": ""},
+            )
 
         if ExamApplication.objects.filter(exam=exam, name=name).exists():
             errors["name"] = "Ya existe una aplicación con ese nombre para este examen"
@@ -63,26 +91,26 @@ class ApplicationCreateView(LoginRequiredMixin, View):
         if errors:
             return render(request, self.template_name, {
                 "exam": exam,
+                "regions": regions,
                 "errors": errors,
-                "form_data": {"name": name, "num_rows": num_rows},
+                "form_data": {
+                    "name": name,
+                    "region": region_id,
+                    "institution": institution_id,
+                    "new_institution_name": new_institution_name,
+                },
             })
 
         application = ExamApplication.objects.create(
             exam=exam,
             name=name,
+            region=region,
+            institution=institution,
             created_by=request.user,
         )
 
-        # Crear filas (alumnos anónimos)
-        rows = [
-            ResponseRow(application=application, row_number=i)
-            for i in range(1, num_rows + 1)
-        ]
-        ResponseRow.objects.bulk_create(rows)
-
-        # Redirigir a captura del primer alumno
-        first_row = application.rows.first()
-        return redirect("responses:capture", pk=application.pk, row_pk=first_row.pk)
+        # Redirigir a la vista de captura (sin alumnos aún)
+        return redirect("responses:capture-redirect", pk=application.pk)
 
 
 class ResponseCaptureView(LoginRequiredMixin, View):
@@ -92,23 +120,41 @@ class ResponseCaptureView(LoginRequiredMixin, View):
 
     def get(self, request, pk, row_pk=None):
         application = get_object_or_404(
-            ExamApplication.objects.select_related("exam"),
+            ExamApplication.objects.select_related("exam", "region", "institution"),
             pk=pk,
         )
         exam = application.exam
 
+        # Todas las filas para navegación
+        all_rows = list(application.rows.select_related("student").order_by("row_number"))
+
+        # Si no hay filas, mostrar vista vacía (se agrega alumno con botón)
+        if not all_rows:
+            return render(request, self.template_name, {
+                "application": application,
+                "exam": exam,
+                "items": exam.items.prefetch_related("subquestions__options").order_by("order"),
+                "current_row": None,
+                "all_rows": [],
+                "prev_row": None,
+                "next_row": None,
+                "existing_responses": {},
+                "existing_responses_json": json.dumps({}),
+                "existing_item_scores": {},
+                "existing_item_scores_json": json.dumps({}),
+                "is_empty": True,
+            })
+
         # Si no viene row_pk, redirigir al primer alumno
         if row_pk is None:
-            first_row = application.rows.order_by("row_number").first()
-            if first_row is None:
-                # No hay filas, crear una
-                first_row = ResponseRow.objects.create(application=application, row_number=1)
+            first_row = all_rows[0]
             return redirect("responses:capture", pk=application.pk, row_pk=first_row.pk)
 
-        current_row = get_object_or_404(ResponseRow, pk=row_pk, application=application)
-
-        # Todas las filas para navegación
-        all_rows = list(application.rows.order_by("row_number"))
+        current_row = get_object_or_404(
+            ResponseRow.objects.select_related("student"),
+            pk=row_pk,
+            application=application,
+        )
 
         # Posición actual para prev/next
         current_index = next(
@@ -131,6 +177,7 @@ class ResponseCaptureView(LoginRequiredMixin, View):
             existing_responses[resp.subquestion_id] = {
                 "option_id": resp.selected_option_id,
                 "is_correct": resp.is_correct,
+                "text_response": resp.text_response or "",
             }
 
         # Puntuaciones directas de este alumno (por ítem)
@@ -150,11 +197,12 @@ class ResponseCaptureView(LoginRequiredMixin, View):
             "existing_responses_json": json.dumps(existing_responses),
             "existing_item_scores": existing_item_scores,
             "existing_item_scores_json": json.dumps(existing_item_scores),
+            "is_empty": False,
         })
 
 
 class SaveResponseAPI(LoginRequiredMixin, View):
-    """API AJAX: guarda la opción seleccionada para una subpregunta"""
+    """API AJAX: guarda la opción seleccionada o texto para una subpregunta"""
 
     def post(self, request, pk):
         try:
@@ -166,6 +214,7 @@ class SaveResponseAPI(LoginRequiredMixin, View):
         row_id = data.get("row_id")
         subquestion_id = data.get("subquestion_id")
         option_id = data.get("option_id")
+        text_response = data.get("text_response", "")
 
         row = get_object_or_404(ResponseRow, pk=row_id, application=application)
         subquestion = get_object_or_404(SubQuestion, pk=subquestion_id)
@@ -178,7 +227,10 @@ class SaveResponseAPI(LoginRequiredMixin, View):
         response, _created = Response.objects.update_or_create(
             row=row,
             subquestion=subquestion,
-            defaults={"selected_option": option},
+            defaults={
+                "selected_option": option,
+                "text_response": text_response if text_response else None,
+            },
         )
 
         # Auto-calcular el ItemScore del ítem padre
@@ -264,23 +316,34 @@ class SaveItemScoreAPI(LoginRequiredMixin, View):
 
 
 class AddRowAPI(LoginRequiredMixin, View):
-    """API AJAX: agrega una nueva fila/alumno"""
+    """API AJAX: agrega un nuevo alumno (crea Student + ResponseRow)"""
 
     def post(self, request, pk):
-        application = get_object_or_404(ExamApplication, pk=pk)
+        application = get_object_or_404(
+            ExamApplication.objects.select_related("region", "institution"),
+            pk=pk,
+        )
         max_row = application.rows.aggregate(
             max_num=Max("row_number")
         )["max_num"] or 0
 
+        # Crear Student heredando region/institution de la aplicación
+        student = Student.objects.create(
+            region=application.region,
+            institution=application.institution,
+        )
+
         new_row = ResponseRow.objects.create(
             application=application,
             row_number=max_row + 1,
+            student=student,
         )
 
         return JsonResponse({
             "success": True,
             "row_id": new_row.id,
             "row_number": new_row.row_number,
+            "reference_code": student.reference_code,
         })
 
 
@@ -378,3 +441,79 @@ class ApplicationDeleteView(LoginRequiredMixin, View):
         application = get_object_or_404(ExamApplication, pk=pk)
         application.delete()
         return JsonResponse({"success": True})
+
+
+class PivotExportView(LoginRequiredMixin, View):
+    """Exporta CSV con tabla cruzada: estudiante × ítems (data cruda del digitador).
+
+    Columnas: IDENTIFICACIÓN, luego una columna por Item/SubQuestion.
+    Si el ítem tiene una sola sub-pregunta, la columna es solo el código (ej: EA02).
+    Si tiene varias, es código_orden (ej: EA01_1, EA01_2).
+    Valores: la letra de la opción seleccionada (a/b/c/d) o el texto para abiertas.
+    Sin scores, sin is_correct.
+    """
+
+    def get(self, request, pk):
+        application = get_object_or_404(
+            ExamApplication.objects.select_related("exam"),
+            pk=pk,
+        )
+        exam = application.exam
+
+        # Obtener ítems y subpreguntas ordenados
+        items = list(
+            exam.items.prefetch_related("subquestions").order_by("order")
+        )
+
+        # Construir columnas dinámicas
+        columns = []  # list of (column_name, subquestion_id)
+        for item in items:
+            subqs = list(item.subquestions.order_by("order"))
+            if len(subqs) == 1:
+                columns.append((item.code, subqs[0].id))
+            else:
+                for sq in subqs:
+                    columns.append((f"{item.code}_{sq.order}", sq.id))
+
+        # Obtener filas con estudiante
+        rows = list(
+            application.rows.select_related("student").order_by("row_number")
+        )
+
+        # Cargar TODAS las respuestas de esta aplicación
+        all_responses = {}
+        for resp in Response.objects.filter(
+            row__application=application
+        ).select_related("selected_option"):
+            all_responses[(resp.row_id, resp.subquestion_id)] = resp
+
+        # Generar CSV
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        filename = f"pivot_{exam.name.replace(' ', '_')}_{application.name.replace(' ', '_')}.csv"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        # BOM for Excel UTF-8
+        response.write("\ufeff")
+
+        writer = csv.writer(response, delimiter=";")
+
+        # Header
+        header = ["IDENTIFICACIÓN"] + [col_name for col_name, _ in columns]
+        writer.writerow(header)
+
+        # Data rows
+        for row in rows:
+            identification = row.student.reference_code if row.student else f"Fila-{row.row_number}"
+            row_data = [identification]
+            for _col_name, subq_id in columns:
+                resp = all_responses.get((row.id, subq_id))
+                if resp is None:
+                    row_data.append("")
+                elif resp.text_response:
+                    row_data.append(resp.text_response)
+                elif resp.selected_option:
+                    row_data.append(resp.selected_option.label)
+                else:
+                    row_data.append("")
+            writer.writerow(row_data)
+
+        return response
