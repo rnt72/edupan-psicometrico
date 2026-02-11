@@ -4,6 +4,36 @@
 
 {% block title %}Tabla de Respuestas{% endblock %}
 
+{% block extra_css %}
+<style>
+    .text-preview-btn {
+        cursor: pointer;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.25rem;
+        background: #e8f4fd;
+        border: 1px solid #b6d8f2;
+        color: #0a58ca;
+        font-size: 0.8rem;
+        transition: all 0.15s;
+    }
+    .text-preview-btn:hover {
+        background: #cfe2ff;
+        border-color: #0d6efd;
+    }
+    .text-preview-btn iconify-icon {
+        flex-shrink: 0;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock extra_css %}
+
 {% block page_content %}
 
 <div class="row">
@@ -50,8 +80,19 @@
                                 </td>
                                 {% for val in row.values %}
                                 <td class="text-center px-2">
-                                    {% if val %}
-                                    <span class="badge bg-light text-dark">{{ val }}</span>
+                                    {% if val.text %}
+                                        {% if val.is_open %}
+                                        <span class="text-preview-btn" 
+                                              data-bs-toggle="modal" 
+                                              data-bs-target="#textModal"
+                                              data-text="{{ val.text }}"
+                                              title="Ver respuesta completa">
+                                            <iconify-icon icon="solar:eye-broken"></iconify-icon>
+                                            {{ val.text|truncatechars:15 }}
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-light text-dark">{{ val.text }}</span>
+                                        {% endif %}
                                     {% else %}
                                     <span class="text-muted">—</span>
                                     {% endif %}
@@ -73,4 +114,41 @@
     </div>
 </div>
 
+<!-- Modal para ver respuesta completa -->
+<div class="modal fade" id="textModal" tabindex="-1" aria-labelledby="textModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="textModalLabel">
+                    <iconify-icon icon="solar:pen-new-square-broken" class="align-middle me-2 text-primary"></iconify-icon>
+                    Respuesta Abierta
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="p-3 bg-light rounded" style="white-space: pre-wrap; word-break: break-word;" id="textModalContent">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock page_content %}
+
+{% block extra_javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const textModal = document.getElementById('textModal');
+    if (textModal) {
+        textModal.addEventListener('show.bs.modal', function(event) {
+            const trigger = event.relatedTarget;
+            const text = trigger.dataset.text || '';
+            document.getElementById('textModalContent').textContent = text;
+        });
+    }
+});
+</script>
+{% endblock extra_javascript %}

@@ -596,13 +596,13 @@ class PivotTableView(LoginRequiredMixin, View):
             for _col_name, subq_id in columns:
                 resp = all_responses.get((row.id, subq_id))
                 if resp is None:
-                    values.append("")
+                    values.append({"text": "", "is_open": False})
                 elif resp.text_response:
-                    values.append(resp.text_response)
+                    values.append({"text": resp.text_response, "is_open": True})
                 elif resp.selected_option:
-                    values.append(resp.selected_option.label)
+                    values.append({"text": resp.selected_option.label, "is_open": False})
                 else:
-                    values.append("")
+                    values.append({"text": "", "is_open": False})
             rows_data.append({
                 "identification": identification,
                 "values": values,

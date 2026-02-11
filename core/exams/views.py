@@ -214,6 +214,7 @@ class SubQuestionCreateAPI(BaseAPIView):
             item=item,
             order=max_order + 1,
             context_text=data.get("context_text", ""),
+            question_type=data.get("question_type", SubQuestion.TYPE_CLOSED),
         )
 
         return JsonResponse({
@@ -222,6 +223,7 @@ class SubQuestionCreateAPI(BaseAPIView):
                 "id": subq.id,
                 "order": subq.order,
                 "context_text": subq.context_text,
+                "question_type": subq.question_type,
             },
         })
 
@@ -235,7 +237,12 @@ class SubQuestionUpdateAPI(BaseAPIView):
 
         subq.order = data.get("order", subq.order)
         subq.context_text = data.get("context_text", subq.context_text)
+        subq.question_type = data.get("question_type", subq.question_type)
         subq.save()
+
+        # Si cambió a tipo abierto, eliminar opciones existentes
+        if subq.question_type == SubQuestion.TYPE_OPEN:
+            subq.options.all().delete()
 
         return JsonResponse({
             "success": True,

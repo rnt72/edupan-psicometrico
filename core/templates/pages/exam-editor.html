@@ -190,9 +190,15 @@
 
 <!-- Template para Subpregunta -->
 <template id="subquestionTemplate">
-    <div class="card mb-2 subquestion-card" data-subquestion-id="">
+    <div class="card mb-2 subquestion-card" data-subquestion-id="" data-question-type="C">
         <div class="card-header py-2 d-flex justify-content-between align-items-center">
-            <span class="fw-medium">Subpregunta <span class="subq-number">1</span></span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-medium">Subpregunta <span class="subq-number">1</span></span>
+                <select class="form-select form-select-sm subq-type-select" style="width: auto; font-size: 0.8rem;">
+                    <option value="C">Cerrada (opciones)</option>
+                    <option value="O">Abierta (texto)</option>
+                </select>
+            </div>
             <div class="d-flex gap-1">
                 <button type="button" class="btn btn-outline-secondary btn-sm btn-move-subq" title="Mover">
                     <iconify-icon icon="solar:sort-vertical-broken"></iconify-icon>
@@ -207,13 +213,21 @@
                 <label class="form-label small text-muted mb-1">Contenido de la subpregunta</label>
                 <div class="subq-context-editor" style="height: 120px; background: #fff;"></div>
             </div>
-            <div class="options-container">
-                <!-- Opciones se agregan aqui -->
+            <div class="options-section">
+                <div class="options-container">
+                    <!-- Opciones se agregan aqui -->
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm btn-add-option mt-2">
+                    <iconify-icon icon="solar:add-circle-broken" class="align-middle me-1"></iconify-icon>
+                    Agregar Opcion
+                </button>
             </div>
-            <button type="button" class="btn btn-outline-secondary btn-sm btn-add-option mt-2">
-                <iconify-icon icon="solar:add-circle-broken" class="align-middle me-1"></iconify-icon>
-                Agregar Opcion
-            </button>
+            <div class="open-question-notice" style="display: none;">
+                <div class="alert alert-info py-2 mb-0">
+                    <iconify-icon icon="solar:pen-new-square-broken" class="align-middle me-1"></iconify-icon>
+                    <small>En la captura, el digitador escribirá la respuesta en un campo de texto libre.</small>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -256,6 +270,7 @@ let itemsData = {
             {
                 id: {{ subq.id }},
                 order: {{ subq.order }},
+                question_type: "{{ subq.question_type }}",
                 context_text: "{{ subq.context_text|escapejs }}",
                 options: [
                     {% for opt in subq.options.all %}
@@ -407,6 +422,16 @@ document.addEventListener('DOMContentLoaded', function() {
             row.remove();
         }
     });
+
+    // Cambio de tipo de subpregunta
+    document.getElementById('subquestionsContainer').addEventListener('change', function(e) {
+        if (e.target.classList.contains('subq-type-select')) {
+            const card = e.target.closest('.subquestion-card');
+            const newType = e.target.value;
+            card.dataset.questionType = newType;
+            applyQuestionType(card, newType);
+        }
+    });
 });
 
 function clearForm() {
@@ -479,6 +504,15 @@ function createSubquestionCard(subqData, number) {
     card.dataset.subquestionId = subqId;
     card.querySelector('.subq-number').textContent = number;
 
+    // Tipo de pregunta
+    const questionType = subqData.question_type || 'C';
+    card.dataset.questionType = questionType;
+    const typeSelect = card.querySelector('.subq-type-select');
+    typeSelect.value = questionType;
+
+    // Mostrar/ocultar secciones según tipo
+    applyQuestionType(card, questionType);
+
     // Guardar contenido inicial para cargar despues de inicializar Quill
     card.dataset.initialContent = subqData.context_text || '';
 
@@ -493,6 +527,18 @@ function createSubquestionCard(subqData, number) {
     }
 
     return card;
+}
+
+function applyQuestionType(card, type) {
+    const optionsSection = card.querySelector('.options-section');
+    const openNotice = card.querySelector('.open-question-notice');
+    if (type === 'O') {
+        optionsSection.style.display = 'none';
+        openNotice.style.display = 'block';
+    } else {
+        optionsSection.style.display = 'block';
+        openNotice.style.display = 'none';
+    }
 }
 
 function initSubquestionEditor(card) {
@@ -536,23 +582,26 @@ function createOptionRow(optData, radioName) {
     return row;
 }
 
-function addSubquestion() {
+function addSubquestion(questionType) {
+    questionType = questionType || 'C';
     const container = document.getElementById('subquestionsContainer');
     const noMsg = document.getElementById('noSubquestionsMessage');
     if (noMsg) noMsg.remove();
 
     const number = container.querySelectorAll('.subquestion-card').length + 1;
-    const card = createSubquestionCard({ options: [] }, number);
+    const card = createSubquestionCard({ options: [], question_type: questionType }, number);
 
-    // Agregar 3 opciones por defecto
-    const labels = ['a', 'b', 'c'];
-    const optionsContainer = card.querySelector('.options-container');
-    const radioName = 'correct_' + card.dataset.subquestionId;
+    // Solo agregar opciones por defecto si es cerrada
+    if (questionType === 'C') {
+        const labels = ['a', 'b', 'c'];
+        const optionsContainer = card.querySelector('.options-container');
+        const radioName = 'correct_' + card.dataset.subquestionId;
 
-    labels.forEach(label => {
-        const optionRow = createOptionRow({ label: label }, radioName);
-        optionsContainer.appendChild(optionRow);
-    });
+        labels.forEach(label => {
+            const optionRow = createOptionRow({ label: label }, radioName);
+            optionsContainer.appendChild(optionRow);
+        });
+    }
 
     container.appendChild(card);
 
@@ -581,17 +630,21 @@ function collectFormData() {
     const subquestions = [];
 
     document.querySelectorAll('.subquestion-card').forEach((card, subqIndex) => {
+        const questionType = card.dataset.questionType || 'C';
         const options = [];
 
-        card.querySelectorAll('.option-row').forEach((row, optIndex) => {
-            options.push({
-                id: row.dataset.optionId.startsWith('new_') ? null : parseInt(row.dataset.optionId),
-                label: row.querySelector('.option-label').value,
-                text: row.querySelector('.option-text').value,
-                is_correct: row.querySelector('.option-correct').checked,
-                order: optIndex + 1
+        // Solo recoger opciones si es cerrada
+        if (questionType === 'C') {
+            card.querySelectorAll('.option-row').forEach((row, optIndex) => {
+                options.push({
+                    id: row.dataset.optionId.startsWith('new_') ? null : parseInt(row.dataset.optionId),
+                    label: row.querySelector('.option-label').value,
+                    text: row.querySelector('.option-text').value,
+                    is_correct: row.querySelector('.option-correct').checked,
+                    order: optIndex + 1
+                });
             });
-        });
+        }
 
         // Obtener contenido del editor Quill
         const subqId = card.dataset.subquestionId;
@@ -601,6 +654,7 @@ function collectFormData() {
         subquestions.push({
             id: subqId.startsWith('new_') ? null : parseInt(subqId),
             order: subqIndex + 1,
+            question_type: questionType,
             context_text: contextText,
             options: options
         });
@@ -708,7 +762,8 @@ async function saveSubquestionsAndOptions(itemId, subquestions) {
                 body: JSON.stringify({
                     item_id: itemId,
                     order: subq.order,
-                    context_text: subq.context_text
+                    context_text: subq.context_text,
+                    question_type: subq.question_type || 'C'
                 })
             });
             const subqResult = await subqResponse.json();
@@ -723,7 +778,8 @@ async function saveSubquestionsAndOptions(itemId, subquestions) {
                 },
                 body: JSON.stringify({
                     order: subq.order,
-                    context_text: subq.context_text
+                    context_text: subq.context_text,
+                    question_type: subq.question_type || 'C'
                 })
             });
         }

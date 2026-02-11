@@ -28,12 +28,12 @@
         background-color: #f0f0f0;
     }
     .option-label.is-correct-feedback {
-        background-color: #d1e7dd !important;
-        border-color: #198754 !important;
+        background-color: #EEF2F7 !important;
+        border-color: #EEF2F7 !important;
     }
     .option-label.is-incorrect-feedback {
-        background-color: #f8d7da !important;
-        border-color: #dc3545 !important;
+        background-color: #EEF2F7 !important;
+        border-color: #EEF2F7 !important;
     }
     .student-nav {
         position: sticky;
@@ -153,7 +153,7 @@
                 <div class="d-inline">{{ item.instruction|safe }}</div>
             </div>
             <!-- Puntuación directa del ítem -->
-            <div class="d-flex align-items-center gap-2 ms-3 flex-shrink-0">
+            {% comment %} <div class="d-flex align-items-center gap-2 ms-3 flex-shrink-0">
                 <span class="text-muted small fw-semibold">Puntuación:</span>
                 <div class="btn-group" role="group" data-item-id="{{ item.id }}" data-scoring-type="{{ item.scoring_type }}">
                     <button type="button" class="btn btn-sm btn-outline-danger score-btn" data-score="0" title="Incorrecta">0</button>
@@ -163,7 +163,7 @@
                     <button type="button" class="btn btn-sm btn-outline-success score-btn" data-score="2" title="Correcta">2</button>
                     {% endif %}
                 </div>
-            </div>
+            </div> {% endcomment %}
         </div>
     </div>
     <div class="card-body">
@@ -210,7 +210,7 @@
                     </div>
                     {% endif %}
 
-                    {% if subq.options.all %}
+                    {% if subq.question_type == 'C' %}
                     <!-- Opciones de respuesta (radio buttons interactivos) -->
                     {% for option in subq.options.all %}
                     <div class="mb-1">
@@ -336,10 +336,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const subqId = parseInt(this.dataset.subqId);
             const optionId = parseInt(this.dataset.optionId);
             const itemId = parseInt(this.dataset.itemId);
+            const selectedRadio = this;
 
-            document.querySelectorAll(`input[name="subq_${subqId}"]`).forEach(function(r) {
+            // Bloquear todos los radios de esta subpregunta mientras se guarda
+            const siblingRadios = document.querySelectorAll(`input[name="subq_${subqId}"]`);
+            siblingRadios.forEach(function(r) {
+                r.disabled = true;
                 const label = r.nextElementSibling;
                 label.classList.remove('is-correct-feedback', 'is-incorrect-feedback');
+                label.style.pointerEvents = 'none';
+                label.style.opacity = r === selectedRadio ? '1' : '0.6';
             });
 
             fetch(`/analysis/application/${applicationPk}/api/save-response/`, {
@@ -357,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    const label = this.nextElementSibling;
+                    const label = selectedRadio.nextElementSibling;
                     label.classList.add(data.is_correct ? 'is-correct-feedback' : 'is-incorrect-feedback');
 
                     const btnGroup = document.querySelector(`.btn-group[data-item-id="${data.item_id}"]`);
@@ -367,7 +373,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             })
-            .catch(err => console.error('Error:', err));
+            .catch(err => console.error('Error:', err))
+            .finally(() => {
+                // Desbloquear todos los radios
+                siblingRadios.forEach(function(r) {
+                    r.disabled = false;
+                    r.nextElementSibling.style.pointerEvents = '';
+                    r.nextElementSibling.style.opacity = '';
+                });
+            });
         });
     });
 
@@ -405,6 +419,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 800);
         });
     });
+
+    // TODO: se comento puntuacion y los colores, aun que hay logica para que funcione y actualmente residual
 
     // ==========================================
     // Handler: puntuación directa (botones 0/1/2)

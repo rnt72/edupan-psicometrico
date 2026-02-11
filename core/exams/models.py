@@ -126,6 +126,13 @@ class Item(models.Model):
 class SubQuestion(models.Model):
     """Subpregunta dentro de un ítem (puede haber múltiples por ítem)"""
 
+    TYPE_CLOSED = "C"
+    TYPE_OPEN = "O"
+    TYPE_CHOICES = [
+        (TYPE_CLOSED, "Cerrada (opciones)"),
+        (TYPE_OPEN, "Abierta (texto libre)"),
+    ]
+
     item = models.ForeignKey(
         Item,
         on_delete=models.CASCADE,
@@ -133,6 +140,12 @@ class SubQuestion(models.Model):
         verbose_name="Ítem",
     )
     order = models.PositiveIntegerField("Orden", default=0)
+    question_type = models.CharField(
+        "Tipo de pregunta",
+        max_length=1,
+        choices=TYPE_CHOICES,
+        default=TYPE_CLOSED,
+    )
     image = models.ImageField(
         "Imagen",
         upload_to="exams/subquestions/",
